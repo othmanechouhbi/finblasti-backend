@@ -631,7 +631,7 @@
 
   <script>
  // URL de votre serveur
-const API_URL = 'finblasti-backend-production.up.railway.app/api';
+const API_URL = 'https://finblasti-backend-production.up.railway.app/api';
 
 // Tableau des spots (on va le remplir depuis l'API)
 let spots = [];
@@ -681,7 +681,7 @@ async function chargerSpotsDepuisAPI() {
     return spots;
   } catch (error) {
     console.error('❌ Erreur lors du chargement:', error);
-    alert('Erreur: Impossible de se connecter au serveur.\nAssurez-vous que le serveur Node.js est lancé sur http://localhost:3000');
+    alert('Erreur: Impossible de se connecter au serveur en ligne.');
     return [];
   }
 }
