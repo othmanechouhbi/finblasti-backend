@@ -1137,9 +1137,9 @@ chargerSpotsDepuisAPI().then(() => {
 
     if (response.ok) {
       const spotAjoute = await response.json();
-      console.log('✅ Spot ajouté!', spotAjoute);
+      console.log('Spot ajouté!', spotAjoute);
       
-      showToast('✅ Spot ajouté !', 'Votre proposition a été sauvegardée en base de données !');
+      showToast('Spot ajouté !', 'Votre proposition a été sauvegardée en base de données !');
       e.target.reset();
       
       // Recharger la liste
