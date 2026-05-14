@@ -365,38 +365,45 @@
                 <option value="all">Toutes les villes</option>
                 <option value="Agadir">Agadir</option>
                 <option value="Al Hoceima">Al Hoceima</option>
+                <option value="Azemmour">Azemmour</option>
                 <option value="Béni Mellal">Béni Mellal</option>
+                <option value="Berkane">Berkane</option>
                 <option value="Berrechid">Berrechid</option>
+                <option value="Bouznika">Bouznika</option>
                 <option value="Casablanca">Casablanca</option>
+                <option value="Chefchaouen">Chefchaouen</option>
                 <option value="Dakhla">Dakhla</option>
                 <option value="El Jadida">El Jadida</option>
-                <option value="Errachidia">Errachidia</option>
                 <option value="Essaouira">Essaouira</option>
                 <option value="Fès">Fès</option>
+                <option value="Fnideq">Fnideq</option>
                 <option value="Guelmim">Guelmim</option>
                 <option value="Ifrane">Ifrane</option>
                 <option value="Kénitra">Kénitra</option>
-                <option value="Khémisset">Khémisset</option>
+                <option value="Khemisset">Khemisset</option>
                 <option value="Khouribga">Khouribga</option>
+                <option value="Ksar El Kebir">Ksar El Kebir</option>
                 <option value="Laâyoune">Laâyoune</option>
                 <option value="Larache">Larache</option>
                 <option value="Marrakech">Marrakech</option>
                 <option value="Meknès">Meknès</option>
                 <option value="Mohammedia">Mohammedia</option>
                 <option value="Nador">Nador</option>
-                <option value="Oujda">Oujda</option>
                 <option value="Ouarzazate">Ouarzazate</option>
+                <option value="Oujda">Oujda</option>
                 <option value="Rabat">Rabat</option>
                 <option value="Safi">Safi</option>
                 <option value="Salé">Salé</option>
                 <option value="Settat">Settat</option>
+                <option value="Sidi Bennour">Sidi Bennour</option>
                 <option value="Sidi Kacem">Sidi Kacem</option>
-                <option value="Tan-Tan">Tan-Tan</option>
                 <option value="Tanger">Tanger</option>
+                <option value="Taroudant">Taroudant</option>
                 <option value="Taza">Taza</option>
                 <option value="Témara">Témara</option>
                 <option value="Tétouan">Tétouan</option>
                 <option value="Tiznit">Tiznit</option>
+                <option value="Youssoufia">Youssoufia</option>
               </select>
 
               <label class="block text-sm font-semibold mt-5 mb-2 text-slate-600 dark:text-slate-300">Type</label>
@@ -1030,40 +1037,49 @@ chargerSpotsDepuisAPI().then(() => {
 
     // ── Villes & Quartiers du Maroc ──────────────────────────────────────────
     const VILLES_QUARTIERS = {
-      "Casablanca": ["Maarif","Bourgogne","Gauthier","Racine","Anfa","Ain Diab","Triangle d'Or","Belvédère","Ain Chock","Ain Sebaa","Hay Hassani","Sidi Bernoussi","Ben M'Sick","Derb Sultan","Hay Mohammadi","Sbata","Moulay Youssef","Hay El Farah","Sidi Moussa","Roches Noires","Bernoussi","Oulfa","Lissasfa","Sidi Maarouf","Bouskoura","Médina"],
-      "Rabat": ["Agdal","Hassan","L'Océan","Hay Riad","Souissi","Diour Jamaa","Akkari","Yacoub Al Mansour","Hay Nahda","Médina","Les Orangers","Hay Salam","Aviation","Ennahda","Qamra"],
-      "Salé": ["Médina","Bettana","Tabriquet","Hay Salam","Hay Inbiaat","Laayayda","Hay Al Fath","Bab Lamrissa","Karia"],
-      "Marrakech": ["Gueliz","Hivernage","Médina","Mellah","Palmeraie","Daoudiate","Bab Doukkala","Sidi Ghanem","M'Hamid","Massira","Targa","Hay Mohammadi","Semlalia","Mhamid","Ménara","Agdal"],
-      "Fès": ["Ain Chkef","Ville Nouvelle","Médina","Zouagha","Narjiss","Montfleuri","Saada","Bensouda","Borj Sud","Oued Fès","Hay Salam","Atlas","Ain Kadous","Dhar El Mehraz"],
-      "Tanger": ["Malabata","Médina","Charf","Mesnana","Bni Makada","Val Fleuri","Centre-ville","Marchane","Iberia","Gzenaya","Branes","California","Hay Al Barakah"],
-      "Agadir": ["Centre Ville","Hay Mohammadi","Talborjt","Ait Melloul","Dakhla","Bensergao","Founty","Sonaba","Hay Almassira","Tilila","Secteur Touristique","Cité Dakhla"],
-      "Meknès": ["Hamriya","Ville Nouvelle","Médina","Borj Moulay Omar","Marjane","Zitoune","Hay Salam","Riad","Agouray","Ain Smen","Oulad Bougrine"],
-      "Oujda": ["Ville Nouvelle","Médina","Sidi Maafa","Isly","Angad","Hay Salam","Hay Qods","Hay Al Farah","Sidi Brahim","Oujda Hay El Wiam"],
-      "Kénitra": ["Ville Nouvelle","Médina","Hay Raha","Hay Nakhil","Bir Rami","Saknia","Hay Mansour","Hay Salam","Malaabia"],
-      "Tétouan": ["Médina","Ensanche","Martil","M'Diq","Sania Ramel","Hay Salam","Fnideq","Restinga"],
-      "Mohammedia": ["Centre","Hay Farah","Ain Harrouda","Yacoub Al Mansour","Biada","Sidi Moussa","Mansouria","Sahel"],
-      "El Jadida": ["Haouzia","Hay Zitoun","Centre","Azemmour","Chouafa","Hay El Qods","Boulevard","Hay Massira"],
-      "Safi": ["Sidi Bouzid","Médina","Hay Essalam","Centre","Hay Lahraouiyine","Hay Al Massira"],
-      "Béni Mellal": ["Hay Massira","Centre","Hay Mohammadi","Ain Asserdoune","Oulad Yaich","Hay Salam","Kelâa des Sraghna"],
-      "Nador": ["Centre","Hay Salam","Beni Chiker","Zeghanghan","Selouane","Hay El Farah"],
-      "Settat": ["Centre","Hay Mohammadi","Hay Salam","Ain Hjar"],
-      "Larache": ["Médina","Hay El Baraka","Centre","Ksar El Kebir"],
-      "Khouribga": ["Centre","Hay Mohammadi","Oued Zem","Boujniba"],
-      "Berrechid": ["Centre","Hay Salam"],
-      "Ouarzazate": ["Centre","Hay Salam","Targa","Tassoumaat"],
-      "Dakhla": ["Centre","Hay Salam","Bir Anzarane","Hay Erraha"],
-      "Laâyoune": ["Centre","Hay Salam","Laâyoune Foum El Oued","Hay Maatallah"],
-      "Errachidia": ["Centre","Hay Salam","Hay Mohammadi","Ziz"],
-      "Taza": ["Médina","Ville Nouvelle","Hay Salam","Taza Est"],
-      "Guelmim": ["Centre","Hay Salam","Hay Mohammadi"],
-      "Essaouira": ["Médina","Hay Salam","Centre","Quartier des Alizés"],
-      "Ifrane": ["Centre","Hay Salam","Ain Vittel"],
-      "Al Hoceima": ["Centre","Médina","Hay Salam","Ajdir"],
-      "Tiznit": ["Médina","Hay Salam","Centre"],
-      "Tan-Tan": ["Centre","Hay Salam"],
-      "Sidi Kacem": ["Centre","Hay Salam"],
-      "Khémisset": ["Centre","Hay Salam"],
-      "Témara": ["Centre","Hay Salam","Hay Nahda","Hay Riad"],
+      // ── Grandes villes ────────────────────────────────────────────────────
+      "Casablanca":   ["Maârif","Gauthier","Racine","Bourgogne","Anfa","Ain Diab","Sidi Belyout","Centre-ville","Habous","Mers Sultan","Derb Sultan","Hay Mohammadi","Ain Sebaâ","Roches Noires","Belvédère","Palmier","Oasis","Polo","Californie","Sidi Maârouf","Hay Hassani","Oulfa","Lissasfa","Sbata","Sidi Othmane","Ben M'Sick","Moulay Rachid","Bernoussi","Sidi Bernoussi","Aïn Chock","Errahma"],
+      "Rabat":        ["Agdal","Hay Riad","Souissi","Hassan","Centre-ville","Médina","Océan","Akkari","Yacoub El Mansour","Hay El Fath","Hay Nahda","Takaddoum","Aviation","Les Orangers","Diour Jamaa","Ambassadeurs","Al Irfane","Hay Al Massira"],
+      "Marrakech":    ["Guéliz","Hivernage","Médina","Ménara","Sidi Ghanem","Daoudiate","Massira","Targa","Semlalia","Amerchich","Sidi Youssef Ben Ali","Mhamid","Hay Charaf","Hay Al Massar","Palmeraie","Agdal","Route de Casablanca","Route d'Ourika"],
+      "Fès":          ["Fès El Bali","Fès Jdid","Ville Nouvelle","Agdal","Narjiss","Saâda","Bensouda","Zouagha","Aïn Kadous","Sais","Hay Lalla Soukaina","Montfleuri","Dokkarat","Hay Anas","Hay Adarissa","Oued Fès","Ben Debbab"],
+      "Tanger":       ["Centre-ville","Médina","Malabata","Iberia","Marshan","Boubana","Dradeb","Branes","Mesnana","Mghogha","Val Fleuri","Souani","Castilla","Aouama","Achakar","Route de Rabat","Tanja Balia","Tanja El Balia"],
+      "Agadir":       ["Talborjt","Haut Founty","Founty","Dakhla","Salam","Cité Suisse","Charaf","Hay Mohammadi","Al Houda","Tilila","Bensergao","Anza","Tikiouine","Amsernat","Illigh","Najah","Port","Centre-ville"],
+      "Meknès":       ["Hamria","Ville Nouvelle","Médina","Toulal","Marjane","Zitoune","Sidi Bouzekri","Borj Moulay Omar","Bassatine","Riad","Hay Salam","El Menzeh","Wislane","Ain Slougui","Sidi Said"],
+      "Oujda":        ["Centre-ville","Lazaret","Al Qods","Hay El Fath","Hay Salam","Sidi Yahya","Boudir","Andalous","Isly","Al Massira","El Hikma","Hay Ennajd","Route de Jerada","Université","Médina"],
+      "Kénitra":      ["Maamora","Ville Haute","Médina","Bir Rami","Oulad Oujih","La Cigogne","Saknia","Mimosas","Val Fleuri","Atlas","Haddada","Maghreb Arabi","Ismailia","Ouled Berjal"],
+      "Tétouan":      ["Médina","Ensanche","M'hanech","Touilaa","Saniat Rmel","Martil proche","Taboula","Wilaya","Dersa","Korrat Sbaa","Touabel","Jamaa Mezouak","Coelma","Boussafou"],
+      "Mohammedia":   ["Centre-ville","Parc","La Siesta","Mansouria proche","Riad Salam","Wafa","Nassim","Al Alia","El Hassania","Hay Chabab","Hay Falah","Hay El Massira","Hay Al Amal","Kasbah","Port","Plage","Bd Hassan II","Bd Palestine","Sablettes"],
+      "Salé":         ["Bab Lamrissa","Médina","Bettana","Tabriquet","Hay Salam","Laayayda","Sidi Moussa","Karia","Hay Chmaou","Said Hajji","Sala Al Jadida","Technopolis","Oulja","Hssaine"],
+      "Témara":       ["Centre-ville","Wifaq","Massira","Harhoura","Val d'Or","Guich Loudaya","Abbadi","Nahda","Maghreb Arabi","Al Mansour Dahbi","Al Firdaous","Skikina"],
+      "El Jadida":    ["Centre-ville","Cité Portugaise","Sidi Bouzid","Najd","Saada","El Qods","Al Matar","Mouilha","Hay Essalam","Hay Al Amal","Californie","Plateaux"],
+      "Safi":         ["Médina","Plateau","Sidi Bouzid","Kaouki","Biada","Hay Mohammadi","Anas","Jenan","Bouregba","Saada","Lalla Hnia Hamria","Quartier Industriel"],
+      "Nador":        ["Centre-ville","El Kindi","Hay Al Matar","Hay El Khattabi","Hay Arrid","Laari Cheikh","Taouima","Boubarg","Ouled Mimoun","Ihamouten","Selouane proche"],
+      "Béni Mellal":  ["Centre-ville","Médina","Atlas","Oulad Hamdane","Hay Salam","Hay Riad","Takadoum","Ouled Ayad","Mghila","El Massira","Sidi Jaber","Hay Al Amal"],
+      "Khouribga":    ["Centre-ville","Hay El Qods","Nahda","Massira","Hay Salam","Al Fath","Hay Riyad","OCP","Hay Hassania","Hay Farah","Quartier Industriel"],
+      "Settat":       ["Centre-ville","Hay Salam","Hay Amal","Smaala","Miftah El Kheir","Mabrouka","Farah","Saada","Hay Al Massira","Hay Lissasfa","Quartier Administratif"],
+      "Laâyoune":     ["Centre-ville","Al Wahda","Al Qods","Hay Al Massira","Hay Essalam","Moulay Rachid","25 Mars","Erraha","Hay Al Fath","Hay Linaach"],
+      "Dakhla":       ["Centre-ville","Hay Al Massira","Hay Rahma","Hay Salam","Hay Al Qods","Hay Al Kassam","Hay Essalam","Hay Ennahda","Port","Corniche"],
+      // ── Autres villes par ordre alphabétique ─────────────────────────────
+      "Al Hoceima":   ["Centre-ville","Mirador","Sidi Abid","Calabonita","Tala Youssef proche","Izemouren","Hay Riad","Corniche","Sabadia"],
+      "Azemmour":     ["Médina","Centre-ville","Hay Nahda","Hay Salam","Hay El Massira","Sidi Ali","Route d'El Jadida"],
+      "Berkane":      ["Centre-ville","Hay Al Qods","Hay Salam","Hay Hassani","Hay Moulay Rachid","Hay El Massira","Sidi Slimane","Laâyoune-Berkane"],
+      "Berrechid":    ["Centre-ville","Hay Hassani","Hay Salam","Hay Farah","Hay Al Fath","Hay Al Amal","Hay Yasmine","Quartier Industriel"],
+      "Bouznika":     ["Centre-ville","Plage","Hay Riad","Hay Salam","Hay Al Amal","Hay Al Massira","Bahia","Route de Benslimane"],
+      "Chefchaouen":  ["Médina","Outa Hammam","Souika","Rif Al Andalous","Ain Haouzi","Loubar","Bab Souk","Bab Taza","Sidi Abdelhamid"],
+      "Essaouira":    ["Médina","Mellah","Borj","Centre-ville","Quartier Industriel","Ghazoua proche","Diabat proche","Azlef","El Borj"],
+      "Fnideq":       ["Centre-ville","Bab Sebta","Hay Al Massira","Hay Salam","Hay Riad","Hay Al Amal","Route de M'diq"],
+      "Guelmim":      ["Centre-ville","Hay Rahma","Hay Salam","Hay Al Qods","Hay Al Massira","Hay Ennahda","Hay El Fath","Quartier Administratif"],
+      "Ifrane":       ["Centre-ville","Hay Riad","Hay Atlas","Vittel","Tizguite","Al Akhawayn","Zaouia","Marché"],
+      "Khemisset":    ["Centre-ville","Hay Salam","Hay Al Massira","Hay Amal","Hay Nahda","Hay Riyad","Sidi Allal","Quartier Administratif"],
+      "Ksar El Kebir":["Centre-ville","Médina","Hay Salam","Hay Al Massira","Hay Ennahda","Hay Al Amal","Hay Andalous","Oulad Hmaid"],
+      "Larache":      ["Centre-ville","Médina","Hay Jadid","Hay Salam","Hay Maghreb Jadid","Hay Al Massira","Hay Essadaka","Port","Balcon Atlantique"],
+      "Ouarzazate":   ["Centre-ville","Taourirt","Hay Al Massira","Hay Salam","Hay Mohammadi","Tarmigte proche","Tabounte","Hay El Wahda"],
+      "Sidi Bennour": ["Centre-ville","Hay Salam","Hay Al Massira","Hay Amal","Hay Nahda","Hay Al Qods","Quartier Administratif"],
+      "Sidi Kacem":   ["Centre-ville","Hay Salam","Hay El Massira","Hay Al Qods","Hay Nahda","Hay Amal","Gare","Quartier Industriel"],
+      "Taroudant":    ["Médina","Centre-ville","Bab El Kasbah","Bab Targhount","Hay Salam","Hay Mohammadi","Hay Al Massira","Sidi Belkass"],
+      "Taza":         ["Médina","Ville Nouvelle","Hay Salam","Hay Al Qods","Hay Massira","Hay Taza Al Oulia","Bab Jamaa","Jiarine","Quartier Administratif"],
+      "Tiznit":       ["Médina","Centre-ville","Hay Al Massira","Hay Salam","Hay Idzakri","Hay El Fath","Hay Al Amal","Bab Oulad Jerrar"],
+      "Youssoufia":   ["Centre-ville","Hay Salam","Hay Al Massira","Hay Mohammadi","Hay Farah","Hay Amal","Hay Nahda","Quartier OCP"],
     };
 
     const TOUTES_VILLES = Object.keys(VILLES_QUARTIERS).sort();
