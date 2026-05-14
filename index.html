@@ -363,10 +363,40 @@
               <label class="block text-sm font-semibold mb-2 text-slate-600 dark:text-slate-300">Ville</label>
               <select id="cityFilter" class="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
                 <option value="all">Toutes les villes</option>
+                <option value="Agadir">Agadir</option>
+                <option value="Al Hoceima">Al Hoceima</option>
+                <option value="Béni Mellal">Béni Mellal</option>
+                <option value="Berrechid">Berrechid</option>
                 <option value="Casablanca">Casablanca</option>
-                <option value="Mohammedia">Mohammedia</option>
-                <option value="Rabat">Rabat</option>
+                <option value="Dakhla">Dakhla</option>
+                <option value="El Jadida">El Jadida</option>
+                <option value="Errachidia">Errachidia</option>
+                <option value="Essaouira">Essaouira</option>
+                <option value="Fès">Fès</option>
+                <option value="Guelmim">Guelmim</option>
+                <option value="Ifrane">Ifrane</option>
+                <option value="Kénitra">Kénitra</option>
+                <option value="Khémisset">Khémisset</option>
+                <option value="Khouribga">Khouribga</option>
+                <option value="Laâyoune">Laâyoune</option>
+                <option value="Larache">Larache</option>
                 <option value="Marrakech">Marrakech</option>
+                <option value="Meknès">Meknès</option>
+                <option value="Mohammedia">Mohammedia</option>
+                <option value="Nador">Nador</option>
+                <option value="Oujda">Oujda</option>
+                <option value="Ouarzazate">Ouarzazate</option>
+                <option value="Rabat">Rabat</option>
+                <option value="Safi">Safi</option>
+                <option value="Salé">Salé</option>
+                <option value="Settat">Settat</option>
+                <option value="Sidi Kacem">Sidi Kacem</option>
+                <option value="Tan-Tan">Tan-Tan</option>
+                <option value="Tanger">Tanger</option>
+                <option value="Taza">Taza</option>
+                <option value="Témara">Témara</option>
+                <option value="Tétouan">Tétouan</option>
+                <option value="Tiznit">Tiznit</option>
               </select>
 
               <label class="block text-sm font-semibold mt-5 mb-2 text-slate-600 dark:text-slate-300">Type</label>
@@ -496,7 +526,9 @@
             </div>
             <div>
               <label class="font-semibold text-sm">Ville</label>
-              <input required placeholder="Casablanca, Rabat..." class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+              <select id="addVilleSelect" required class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+                <option value="">Choisir une ville...</option>
+              </select>
             </div>
             <div>
               <label class="font-semibold text-sm">Type</label>
@@ -509,7 +541,9 @@
             </div>
             <div>
               <label class="font-semibold text-sm">Quartier</label>
-              <input placeholder="Maarif, Agdal, Parc..." class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+              <select id="addQuartierSelect" disabled class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary disabled:opacity-50">
+                <option value="">Choisir d'abord une ville...</option>
+              </select>
             </div>
 
             <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -645,7 +679,7 @@ async function chargerSpotsDepuisAPI() {
     
     if (donnees.length > 0) {
       console.log('✅ ' + donnees.length + ' spots chargés depuis l\'API');
-      spots = donnees;
+      spots = donnees.map(s => ({ ...s, id: s.id || s._id, reviewsText: s.reviewsText || [] }));
     } else {
       console.log('⚠️ Aucun spot trouvé, utilisation des données d\'exemple');
       // Données d'exemple si la BD est vide
@@ -763,10 +797,14 @@ chargerSpotsDepuisAPI().then(() => {
       `;
     }
 
+    // Event delegation for detail buttons - works even after dynamic re-render
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.detail-btn');
+      if (btn && btn.dataset.detail) openDetail(btn.dataset.detail);
+    });
+
     function attachDetailButtons() {
-      document.querySelectorAll('.detail-btn').forEach(btn => {
-        btn.addEventListener('click', () => openDetail(btn.dataset.detail));
-      });
+      // kept for backwards compat - delegation handles everything
     }
 
     function renderHomeCards(city = 'all') {
@@ -862,7 +900,7 @@ chargerSpotsDepuisAPI().then(() => {
     }
 
     function renderReviews() {
-      const reviews = spots.flatMap(s => s.reviewsText.map(r => ({ ...r, spot: s.name, city: s.city })));
+      const reviews = spots.flatMap(s => (s.reviewsText || []).map(r => ({ ...r, spot: s.name, city: s.city })));
       document.getElementById('reviewsList').innerHTML = reviews.map((r, i) => `
         <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6">
           <div class="flex items-start gap-4">
@@ -989,6 +1027,69 @@ chargerSpotsDepuisAPI().then(() => {
     document.getElementById('closeToast').addEventListener('click', () => {
       document.getElementById('toastModal').classList.remove('open');
     });
+
+    // ── Villes & Quartiers du Maroc ──────────────────────────────────────────
+    const VILLES_QUARTIERS = {
+      "Casablanca": ["Maarif","Bourgogne","Gauthier","Racine","Anfa","Ain Diab","Triangle d'Or","Belvédère","Ain Chock","Ain Sebaa","Hay Hassani","Sidi Bernoussi","Ben M'Sick","Derb Sultan","Hay Mohammadi","Sbata","Moulay Youssef","Hay El Farah","Sidi Moussa","Roches Noires","Bernoussi","Oulfa","Lissasfa","Sidi Maarouf","Bouskoura","Médina"],
+      "Rabat": ["Agdal","Hassan","L'Océan","Hay Riad","Souissi","Diour Jamaa","Akkari","Yacoub Al Mansour","Hay Nahda","Médina","Les Orangers","Hay Salam","Aviation","Ennahda","Qamra"],
+      "Salé": ["Médina","Bettana","Tabriquet","Hay Salam","Hay Inbiaat","Laayayda","Hay Al Fath","Bab Lamrissa","Karia"],
+      "Marrakech": ["Gueliz","Hivernage","Médina","Mellah","Palmeraie","Daoudiate","Bab Doukkala","Sidi Ghanem","M'Hamid","Massira","Targa","Hay Mohammadi","Semlalia","Mhamid","Ménara","Agdal"],
+      "Fès": ["Ain Chkef","Ville Nouvelle","Médina","Zouagha","Narjiss","Montfleuri","Saada","Bensouda","Borj Sud","Oued Fès","Hay Salam","Atlas","Ain Kadous","Dhar El Mehraz"],
+      "Tanger": ["Malabata","Médina","Charf","Mesnana","Bni Makada","Val Fleuri","Centre-ville","Marchane","Iberia","Gzenaya","Branes","California","Hay Al Barakah"],
+      "Agadir": ["Centre Ville","Hay Mohammadi","Talborjt","Ait Melloul","Dakhla","Bensergao","Founty","Sonaba","Hay Almassira","Tilila","Secteur Touristique","Cité Dakhla"],
+      "Meknès": ["Hamriya","Ville Nouvelle","Médina","Borj Moulay Omar","Marjane","Zitoune","Hay Salam","Riad","Agouray","Ain Smen","Oulad Bougrine"],
+      "Oujda": ["Ville Nouvelle","Médina","Sidi Maafa","Isly","Angad","Hay Salam","Hay Qods","Hay Al Farah","Sidi Brahim","Oujda Hay El Wiam"],
+      "Kénitra": ["Ville Nouvelle","Médina","Hay Raha","Hay Nakhil","Bir Rami","Saknia","Hay Mansour","Hay Salam","Malaabia"],
+      "Tétouan": ["Médina","Ensanche","Martil","M'Diq","Sania Ramel","Hay Salam","Fnideq","Restinga"],
+      "Mohammedia": ["Centre","Hay Farah","Ain Harrouda","Yacoub Al Mansour","Biada","Sidi Moussa","Mansouria","Sahel"],
+      "El Jadida": ["Haouzia","Hay Zitoun","Centre","Azemmour","Chouafa","Hay El Qods","Boulevard","Hay Massira"],
+      "Safi": ["Sidi Bouzid","Médina","Hay Essalam","Centre","Hay Lahraouiyine","Hay Al Massira"],
+      "Béni Mellal": ["Hay Massira","Centre","Hay Mohammadi","Ain Asserdoune","Oulad Yaich","Hay Salam","Kelâa des Sraghna"],
+      "Nador": ["Centre","Hay Salam","Beni Chiker","Zeghanghan","Selouane","Hay El Farah"],
+      "Settat": ["Centre","Hay Mohammadi","Hay Salam","Ain Hjar"],
+      "Larache": ["Médina","Hay El Baraka","Centre","Ksar El Kebir"],
+      "Khouribga": ["Centre","Hay Mohammadi","Oued Zem","Boujniba"],
+      "Berrechid": ["Centre","Hay Salam"],
+      "Ouarzazate": ["Centre","Hay Salam","Targa","Tassoumaat"],
+      "Dakhla": ["Centre","Hay Salam","Bir Anzarane","Hay Erraha"],
+      "Laâyoune": ["Centre","Hay Salam","Laâyoune Foum El Oued","Hay Maatallah"],
+      "Errachidia": ["Centre","Hay Salam","Hay Mohammadi","Ziz"],
+      "Taza": ["Médina","Ville Nouvelle","Hay Salam","Taza Est"],
+      "Guelmim": ["Centre","Hay Salam","Hay Mohammadi"],
+      "Essaouira": ["Médina","Hay Salam","Centre","Quartier des Alizés"],
+      "Ifrane": ["Centre","Hay Salam","Ain Vittel"],
+      "Al Hoceima": ["Centre","Médina","Hay Salam","Ajdir"],
+      "Tiznit": ["Médina","Hay Salam","Centre"],
+      "Tan-Tan": ["Centre","Hay Salam"],
+      "Sidi Kacem": ["Centre","Hay Salam"],
+      "Khémisset": ["Centre","Hay Salam"],
+      "Témara": ["Centre","Hay Salam","Hay Nahda","Hay Riad"],
+    };
+
+    const TOUTES_VILLES = Object.keys(VILLES_QUARTIERS).sort();
+
+    function populateVilleSelect(selectEl) {
+      selectEl.innerHTML = '<option value="">Choisir une ville...</option>' +
+        TOUTES_VILLES.map(v => `<option value="${v}">${v}</option>`).join('');
+    }
+
+    function populateQuartierSelect(quartierEl, ville) {
+      const quartiers = VILLES_QUARTIERS[ville] || [];
+      quartierEl.innerHTML = '<option value="">Choisir un quartier...</option>' +
+        quartiers.map(q => `<option value="${q}">${q}</option>`).join('');
+      quartierEl.disabled = quartiers.length === 0;
+    }
+
+    // Init add form dropdowns
+    const addVilleSelect = document.getElementById('addVilleSelect');
+    const addQuartierSelect = document.getElementById('addQuartierSelect');
+    if (addVilleSelect && addQuartierSelect) {
+      populateVilleSelect(addVilleSelect);
+      populateQuartierSelect(addQuartierSelect, '');
+      addVilleSelect.addEventListener('change', () => {
+        populateQuartierSelect(addQuartierSelect, addVilleSelect.value);
+      });
+    }
 
     document.getElementById('addSpotForm').addEventListener('submit', async (e) => {
   e.preventDefault();
