@@ -200,9 +200,25 @@
             </div>
           </div>
 
-          <button id="authButton" data-route="login" class="hidden md:block text-slate-600 dark:text-slate-300 font-medium hover:text-primary transition-colors">
-  Connexion
-</button>
+          <div class="relative hidden md:block">
+  <button id="authButton" data-route="login" class="text-slate-600 dark:text-slate-300 font-medium hover:text-primary transition-colors">
+    Connexion
+  </button>
+
+  <div id="authMenu" class="hidden absolute right-0 mt-3 w-56 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-2 z-50">
+    
+    <button id="editNameBtn"
+      class="w-full text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+      ✏️ Modifier mon nom
+    </button>
+
+    <button id="logoutBtn"
+      class="w-full text-left px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition">
+      🚪 Se déconnecter
+    </button>
+
+  </div>
+</div>
 
           <button data-route="add" class="hidden sm:flex bg-primary hover:bg-primaryHover text-white px-5 py-2.5 rounded-full font-semibold transition-all shadow-md hover:shadow-lg items-center gap-2">
             <i class="fa-solid fa-plus text-sm"></i> Ajouter un spot
@@ -717,7 +733,7 @@ function updateAuthUI() {
 
   if (user && user.name) {
     authButton.innerHTML = `<i class="fa-solid fa-user-check mr-1"></i> ${user.name}`;
-    authButton.dataset.route = 'add';
+    authButton.dataset.route = 'profile';
   } else {
     authButton.innerHTML = 'Connexion';
     authButton.dataset.route = 'login';
@@ -731,6 +747,52 @@ function logoutUser() {
   showToast('Déconnexion', 'Tu es maintenant déconnecté.');
   setRoute('home');
 }
+document.addEventListener('click', (e) => {
+  const authButton = e.target.closest('#authButton');
+  const authMenu = document.getElementById('authMenu');
+
+  if (!authMenu) return;
+
+  if (authButton) {
+    const user = getConnectedUser();
+
+    if (user) {
+      e.preventDefault();
+      authMenu.classList.toggle('hidden');
+    }
+
+    return;
+  }
+
+  if (!e.target.closest('#authMenu')) {
+    authMenu.classList.add('hidden');
+  }
+});
+
+document.getElementById('logoutBtn')?.addEventListener('click', () => {
+  document.getElementById('authMenu')?.classList.add('hidden');
+  logoutUser();
+});
+
+document.getElementById('editNameBtn')?.addEventListener('click', () => {
+  const user = getConnectedUser();
+
+  if (!user) return;
+
+  const newName = prompt('Entre ton nouveau nom :', user.name || '');
+
+  if (!newName || !newName.trim()) return;
+
+  user.name = newName.trim();
+
+  localStorage.setItem('finblasti_user', JSON.stringify(user));
+
+  updateAuthUI();
+
+  document.getElementById('authMenu')?.classList.add('hidden');
+
+  showToast('Nom modifié', 'Ton nom a été modifié sur ce navigateur.');
+});
 
 // Fonction pour charger les spots depuis l'API
 async function chargerSpotsDepuisAPI() {
