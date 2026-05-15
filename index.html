@@ -524,53 +524,63 @@
         <button data-route="home" class="text-primary font-semibold mb-4"><i class="fa-solid fa-arrow-left mr-2"></i>Retour</button>
         <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[2rem] p-6 md:p-10">
           <h1 class="text-4xl font-extrabold text-slate-900 dark:text-white mb-3">Ajouter un spot</h1>
-          <p class="text-slate-500 dark:text-slate-400 mb-8">Ce formulaire est une maquette front-end. Plus tard, tu pourras connecter une vraie base de données.</p>
+          <p class="text-slate-500 dark:text-slate-400 mb-8">Ajoute un nouveau spot. Tu dois être connecté pour envoyer une proposition avec photo.</p>
 
           <form id="addSpotForm" class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label class="font-semibold text-sm">Nom du lieu</label>
-              <input required placeholder="Ex : Le Hub Café" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+              <input name="name" required placeholder="Ex : Le Hub Café" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
             </div>
             <div>
               <label class="font-semibold text-sm">Ville</label>
-              <select id="addVilleSelect" required class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+              <select id="addVilleSelect" name="city" required class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
                 <option value="">Choisir une ville...</option>
               </select>
             </div>
             <div>
               <label class="font-semibold text-sm">Type</label>
-              <select class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
-                <option>Café</option>
-                <option>Coworking</option>
-                <option>Bibliothèque</option>
-                <option>Espace public</option>
+              <select name="type" required class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+                <option value="Café">Café</option>
+                <option value="Coworking">Coworking</option>
+                <option value="Bibliothèque">Bibliothèque</option>
+                <option value="Espace public">Espace public</option>
               </select>
             </div>
             <div>
               <label class="font-semibold text-sm">Quartier</label>
-              <select id="addQuartierSelect" disabled class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary disabled:opacity-50">
+              <select id="addQuartierSelect" name="district" required disabled class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary disabled:opacity-50">
                 <option value="">Choisir d'abord une ville...</option>
               </select>
             </div>
 
-            <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="md:col-span-2 grid grid-cols-1 sm:grid-cols-4 gap-4">
               <div>
                 <label class="font-semibold text-sm">Wi-Fi /10</label>
-                <input type="number" min="0" max="10" value="8" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+                <input name="wifi" type="number" min="0" max="10" step="0.5" value="8" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
               </div>
               <div>
                 <label class="font-semibold text-sm">Calme /10</label>
-                <input type="number" min="0" max="10" value="8" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+                <input name="quiet" type="number" min="0" max="10" step="0.5" value="8" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+              </div>
+              <div>
+                <label class="font-semibold text-sm">Confort /10</label>
+                <input name="comfort" type="number" min="0" max="10" step="0.5" value="8" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
               </div>
               <div>
                 <label class="font-semibold text-sm">Éco-score /10</label>
-                <input type="number" min="0" max="10" value="7" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+                <input name="eco" type="number" min="0" max="10" step="0.5" value="7" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
               </div>
             </div>
 
             <div class="md:col-span-2">
+              <label class="font-semibold text-sm">Photo du spot</label>
+              <input id="spotPhoto" name="photo" type="file" accept="image/*" class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-2">Photo recommandée : moins de 3 Mo.</p>
+            </div>
+
+            <div class="md:col-span-2">
               <label class="font-semibold text-sm">Commentaire</label>
-              <textarea rows="5" placeholder="Expliquer pourquoi ce spot est utile pour étudier ou travailler..." class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary"></textarea>
+              <textarea name="description" rows="5" placeholder="Expliquer pourquoi ce spot est utile pour étudier ou travailler..." class="mt-2 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary"></textarea>
             </div>
 
             <div class="md:col-span-2 flex flex-col sm:flex-row gap-3 justify-end">
@@ -590,15 +600,28 @@
           <h1 class="text-3xl font-extrabold text-slate-900 dark:text-white">Connexion</h1>
           <p class="text-slate-500 dark:text-slate-400 mt-2 mb-6">Connecte-toi pour noter les spots et enregistrer tes favoris.</p>
 
+          <label class="font-semibold text-sm">Nom</label>
+          <input id="loginName" type="text" placeholder="Ton nom" class="mt-2 mb-4 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+
           <label class="font-semibold text-sm">Email</label>
-          <input type="email" placeholder="email@example.com" class="mt-2 mb-4 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+          <input id="loginEmail" type="email" placeholder="email@example.com" class="mt-2 mb-4 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
 
-          <label class="font-semibold text-sm">Mot de passe</label>
-          <input type="password" placeholder="••••••••" class="mt-2 mb-6 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
+          <button id="sendCodeBtn" class="w-full rounded-full bg-primary text-white py-3 font-bold hover:bg-primaryHover">
+            Recevoir le code
+          </button>
 
-          <button id="fakeLogin" class="w-full rounded-full bg-primary text-white py-3 font-bold hover:bg-primaryHover">Se connecter</button>
+          <div id="codeBox" class="hidden mt-5">
+            <label class="font-semibold text-sm">Code reçu par email</label>
+            <input id="loginCode" type="text" maxlength="6" placeholder="123456" class="mt-2 mb-4 w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary">
 
-          <p class="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">Pas encore de compte ? <button data-route="add" class="text-primary font-bold">Commencer par ajouter un spot</button></p>
+            <button id="verifyCodeBtn" class="w-full rounded-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-3 font-bold">
+              Vérifier et se connecter
+            </button>
+          </div>
+
+          <p class="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">
+            Le code est envoyé par email et reste valable quelques minutes.
+          </p>
         </div>
       </div>
     </section>
@@ -686,7 +709,19 @@ async function chargerSpotsDepuisAPI() {
     
     if (donnees.length > 0) {
       console.log('✅ ' + donnees.length + ' spots chargés depuis l\'API');
-      spots = donnees.map(s => ({ ...s, id: s.id || s._id, reviewsText: s.reviewsText || [] }));
+      spots = donnees.map(s => ({
+        ...s,
+        id: s.id || s._id,
+        image: s.image || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=1200',
+        reviewsText: s.reviewsText || [],
+        tags: s.tags || [],
+        badges: s.badges || ['🚀 Wi-Fi', '🔌 Prises', '🎓 Étudiant'],
+        reviews: s.reviews || 0,
+        price: s.price || 'Prix variable',
+        hours: s.hours || 'Horaires non renseignés',
+        address: s.address || `${s.district || ''}, ${s.city || ''}`,
+        description: s.description || 'Aucune description disponible pour ce spot.'
+      }));
     } else {
       console.log('⚠️ Aucun spot trouvé, utilisation des données d\'exemple');
       // Données d'exemple si la BD est vide
@@ -1108,57 +1143,116 @@ chargerSpotsDepuisAPI().then(() => {
     }
 
     document.getElementById('addSpotForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
+      e.preventDefault();
 
-  // On récupère les valeurs du formulaire
-  const formInputs = e.target.querySelectorAll('input, select, textarea');
-  
-  const nouveauSpot = {
-    name: formInputs[0].value,
-    city: formInputs[1].value,
-    type: formInputs[2].value,
-    district: formInputs[3].value,
-    wifi: parseFloat(formInputs[4].value),
-    quiet: parseFloat(formInputs[5].value),
-    comfort: formInputs[5].value === '' ? 8 : parseFloat(formInputs[5].value),
-    eco: parseFloat(formInputs[6].value),
-    description: formInputs[7].value
-  };
+      const token = localStorage.getItem('finblasti_token');
 
-  console.log('📤 Envoi du spot:', nouveauSpot);
+      if (!token) {
+        showToast('Connexion requise', 'Connecte-toi avant d’ajouter un spot.');
+        setRoute('login');
+        return;
+      }
 
-  try {
-    // Envoyer les données au serveur
-    const response = await fetch(API_URL + '/spots', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(nouveauSpot)
+      const formData = new FormData(e.target);
+
+      try {
+        const response = await fetch(API_URL + '/spots', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showToast('Spot ajouté !', 'Votre proposition avec photo a été sauvegardée.');
+          e.target.reset();
+
+          const quartierSelect = document.getElementById('addQuartierSelect');
+          if (quartierSelect) populateQuartierSelect(quartierSelect, '');
+
+          spots = await chargerSpotsDepuisAPI();
+          renderHomeCards();
+          renderDiscover();
+          renderRanking();
+          renderReviews();
+
+          setRoute('discover');
+        } else if (response.status === 401) {
+          localStorage.removeItem('finblasti_token');
+          localStorage.removeItem('finblasti_user');
+          showToast('Session expirée', 'Reconnecte-toi pour ajouter un spot.');
+          setRoute('login');
+        } else {
+          showToast('❌ Erreur', result.error || 'Impossible d’ajouter le spot');
+        }
+      } catch (error) {
+        console.error('Erreur:', error);
+        showToast('❌ Erreur', 'Erreur: ' + error.message);
+      }
     });
 
-    if (response.ok) {
-      const spotAjoute = await response.json();
-      console.log('Spot ajouté!', spotAjoute);
-      
-      showToast('Spot ajouté !', 'Votre proposition a été sauvegardée en base de données !');
-      e.target.reset();
-      
-      // Recharger la liste
-      spots = await chargerSpotsDepuisAPI();
-      renderHomeCards();
-      renderDiscover();
-      renderRanking();
-    } else {
-      const erreur = await response.json();
-      showToast('❌ Erreur', erreur.error || 'Impossible d\'ajouter le spot');
-    }
-  } catch (error) {
-    console.error('Erreur:', error);
-    showToast('❌ Erreur', 'Erreur: ' + error.message);
-  }
-});
+    document.getElementById('sendCodeBtn').addEventListener('click', async () => {
+      const email = document.getElementById('loginEmail').value.trim();
 
-    document.getElementById('fakeLogin').addEventListener('click', () => {
-      showToast('Connexion simulée', 'Cette partie est prête visuellement. Il faudra ensuite ajouter l’authentification réelle.');
+      if (!email) {
+        showToast('Email requis', 'Entre ton email pour recevoir le code.');
+        return;
+      }
+
+      try {
+        const response = await fetch(API_URL + '/auth/request-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          document.getElementById('codeBox').classList.remove('hidden');
+          showToast('Code envoyé', 'Vérifie ton email et entre le code reçu.');
+        } else {
+          showToast('❌ Erreur', result.error || 'Impossible d’envoyer le code');
+        }
+      } catch (error) {
+        showToast('❌ Erreur', error.message);
+      }
+    });
+
+    document.getElementById('verifyCodeBtn').addEventListener('click', async () => {
+      const name = document.getElementById('loginName').value.trim();
+      const email = document.getElementById('loginEmail').value.trim();
+      const code = document.getElementById('loginCode').value.trim();
+
+      if (!email || !code) {
+        showToast('Code requis', 'Entre le code reçu par email.');
+        return;
+      }
+
+      try {
+        const response = await fetch(API_URL + '/auth/verify-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, code })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          localStorage.setItem('finblasti_token', result.token);
+          localStorage.setItem('finblasti_user', JSON.stringify(result.user));
+
+          showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
+          setRoute('add');
+        } else {
+          showToast('❌ Code incorrect', result.error || 'Vérifie le code.');
+        }
+      } catch (error) {
+        showToast('❌ Erreur', error.message);
+      }
     });
 
     document.getElementById('searchButton').addEventListener('click', () => {
@@ -1571,7 +1665,7 @@ chargerSpotsDepuisAPI().then(() => {
         en: "Add a spot",
         es: "Añadir un sitio"
       },
-      "Ce formulaire est une maquette front-end. Plus tard, tu pourras connecter une vraie base de données.": {
+      "Ajoute un nouveau spot. Tu dois être connecté pour envoyer une proposition avec photo.": {
         ar: "هذا النموذج مجرد واجهة أمامية. لاحقا يمكنك ربطه بقاعدة بيانات حقيقية.",
         en: "This form is a front-end mockup. Later, you can connect it to a real database.",
         es: "Este formulario es una maqueta front-end. Más adelante podrás conectarlo a una base de datos real."
