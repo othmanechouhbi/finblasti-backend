@@ -764,24 +764,31 @@ function logoutUser() {
   showToast('Déconnexion', 'Tu es maintenant déconnecté.');
   setRoute('home');
 }
+routeButtons.forEach(btn => {
+  btn.addEventListener('click', (e) => {
+
+    if (btn.id === 'authButton' && getConnectedUser()) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const authMenu = document.getElementById('authMenu');
+      authMenu?.classList.toggle('hidden');
+
+      return;
+    }
+
+    setRoute(btn.dataset.route);
+  });
+});
 document.addEventListener('click', (e) => {
-  const authButton = e.target.closest('#authButton');
   const authMenu = document.getElementById('authMenu');
 
   if (!authMenu) return;
 
-  if (authButton) {
-    const user = getConnectedUser();
-
-    if (user) {
-      e.preventDefault();
-      authMenu.classList.toggle('hidden');
-    }
-
-    return;
-  }
-
-  if (!e.target.closest('#authMenu')) {
+  if (
+    !e.target.closest('#authMenu') &&
+    !e.target.closest('#authButton')
+  ) {
     authMenu.classList.add('hidden');
   }
 });
