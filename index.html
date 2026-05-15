@@ -1234,8 +1234,22 @@ document.addEventListener('keydown', (e) => {
 
    function showToast(title, text, type = 'success') {
 
-  document.getElementById('toastTitle').textContent = title;
-  document.getElementById('toastText').textContent = text;
+const toastTitle = document.getElementById('toastTitle');
+const toastText = document.getElementById('toastText');
+
+toastTitle.textContent = title;
+
+// empêcher la répétition
+if (
+  !text ||
+  text.trim().toLowerCase() === title.trim().toLowerCase()
+) {
+  toastText.classList.add('hidden');
+  toastText.textContent = '';
+} else {
+  toastText.classList.remove('hidden');
+  toastText.textContent = text;
+}
 
   const iconBox = document.getElementById('toastIconBox');
   const icon = document.getElementById('toastIcon');
@@ -1443,7 +1457,7 @@ updateAuthUI();
 showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
 setRoute('add');
         } else {
-          showToast('Code incorrect', 'Le code saisi est incorrect ou expiré.');
+         showToast('Code incorrect', 'Vérifie le code reçu par email.', 'error');
         }
       } catch (error) {
         showToast('Erreur', error.message, 'error');
