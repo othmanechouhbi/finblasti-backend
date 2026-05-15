@@ -200,7 +200,9 @@
             </div>
           </div>
 
-          <button data-route="login" class="hidden md:block text-slate-600 dark:text-slate-300 font-medium hover:text-primary transition-colors">Connexion</button>
+          <button id="authButton" data-route="login" class="hidden md:block text-slate-600 dark:text-slate-300 font-medium hover:text-primary transition-colors">
+  Connexion
+</button>
 
           <button data-route="add" class="hidden sm:flex bg-primary hover:bg-primaryHover text-white px-5 py-2.5 rounded-full font-semibold transition-all shadow-md hover:shadow-lg items-center gap-2">
             <i class="fa-solid fa-plus text-sm"></i> Ajouter un spot
@@ -699,6 +701,36 @@ const API_URL = 'https://finblasti-backend-production.up.railway.app/api';
 
 // Tableau des spots (on va le remplir depuis l'API)
 let spots = [];
+function getConnectedUser() {
+  try {
+    return JSON.parse(localStorage.getItem('finblasti_user'));
+  } catch {
+    return null;
+  }
+}
+
+function updateAuthUI() {
+  const user = getConnectedUser();
+  const authButton = document.getElementById('authButton');
+
+  if (!authButton) return;
+
+  if (user && user.name) {
+    authButton.innerHTML = `<i class="fa-solid fa-user-check mr-1"></i> ${user.name}`;
+    authButton.dataset.route = 'add';
+  } else {
+    authButton.innerHTML = 'Connexion';
+    authButton.dataset.route = 'login';
+  }
+}
+
+function logoutUser() {
+  localStorage.removeItem('finblasti_token');
+  localStorage.removeItem('finblasti_user');
+  updateAuthUI();
+  showToast('Déconnexion', 'Tu es maintenant déconnecté.');
+  setRoute('home');
+}
 
 // Fonction pour charger les spots depuis l'API
 async function chargerSpotsDepuisAPI() {
@@ -764,6 +796,7 @@ async function chargerSpotsDepuisAPI() {
 
 // Charger les spots au démarrage
 chargerSpotsDepuisAPI().then(() => {
+  updateAuthUI();
   renderHomeCards();
   renderDiscover();
   renderRanking();
@@ -1260,10 +1293,12 @@ window.addEventListener('load', () => {
 
         if (response.ok) {
           localStorage.setItem('finblasti_token', result.token);
-          localStorage.setItem('finblasti_user', JSON.stringify(result.user));
+localStorage.setItem('finblasti_user', JSON.stringify(result.user));
 
-          showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
-          setRoute('add');
+updateAuthUI();
+
+showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
+setRoute('add');
         } else {
           showToast('❌ Code incorrect', result.error || 'Vérifie le code.');
         }
