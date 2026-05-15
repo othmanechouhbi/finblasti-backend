@@ -713,9 +713,12 @@
   <!-- Toast / modal -->
   <div id="toastModal" class="modal-backdrop fixed inset-0 bg-slate-950/50 z-[80] flex items-end sm:items-center justify-center p-4">
     <div class="modal-card w-full sm:max-w-md bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-700">
-      <div class="w-12 h-12 rounded-2xl finscore-gradient text-white flex items-center justify-center mb-4">
-        <i class="fa-solid fa-check"></i>
-      </div>
+      <div id="toastIconBox"
+  class="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-rose-500 text-white flex items-center justify-center mb-4 shadow-lg">
+  
+  <i id="toastIcon" class="fa-solid fa-xmark text-2xl"></i>
+
+</div>
       <h3 id="toastTitle" class="text-xl font-extrabold text-slate-900 dark:text-white">Action réalisée</h3>
       <p id="toastText" class="text-slate-500 dark:text-slate-400 mt-2">Message</p>
       <button id="closeToast" class="mt-6 w-full rounded-full bg-slate-900 dark:bg-white dark:text-slate-900 text-white py-3 font-bold">OK</button>
@@ -1229,11 +1232,32 @@ document.addEventListener('keydown', (e) => {
       setRoute('detail');
     }
 
-    function showToast(title, text) {
-      document.getElementById('toastTitle').textContent = title;
-      document.getElementById('toastText').textContent = text;
-      document.getElementById('toastModal').classList.add('open');
-    }
+   function showToast(title, text, type = 'success') {
+
+  document.getElementById('toastTitle').textContent = title;
+  document.getElementById('toastText').textContent = text;
+
+  const iconBox = document.getElementById('toastIconBox');
+  const icon = document.getElementById('toastIcon');
+
+  if (type === 'error') {
+
+    iconBox.className =
+      'w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-rose-500 text-white flex items-center justify-center mb-4 shadow-lg';
+
+    icon.className = 'fa-solid fa-xmark text-2xl';
+
+  } else {
+
+    iconBox.className =
+      'w-12 h-12 rounded-2xl finscore-gradient text-white flex items-center justify-center mb-4 shadow-lg';
+
+    icon.className = 'fa-solid fa-check text-2xl';
+
+  }
+
+  document.getElementById('toastModal').classList.add('open');
+}
 
     document.getElementById('closeToast').addEventListener('click', () => {
       document.getElementById('toastModal').classList.remove('open');
@@ -1387,7 +1411,7 @@ document.addEventListener('keydown', (e) => {
           showToast('❌ Erreur', result.error || 'Impossible d’envoyer le code');
         }
       } catch (error) {
-        showToast('❌ Erreur', error.message);
+        showToast('Erreur', error.message, 'error');
       }
     });
 
@@ -1419,10 +1443,10 @@ updateAuthUI();
 showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
 setRoute('add');
         } else {
-          showToast('❌ Code incorrect', result.error || 'Vérifie le code.');
+          showToast('Code incorrect', result.error || 'Vérifie le code.', 'error');
         }
       } catch (error) {
-        showToast('❌ Erreur', error.message);
+        showToast('Erreur', error.message, 'error');
       }
     });
 
