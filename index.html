@@ -696,24 +696,18 @@
           <button data-route="add" class="hover:text-primary">Ajouter</button>
         </div>
       </div>
-    
-      <div id="imageViewer" class="modal-backdrop fixed inset-0 bg-slate-950/90 z-[90] flex items-center justify-center p-4">
-
-  <button id="closeImageViewer"
-    class="absolute top-5 right-5 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-xl">
-    <i class="fa-solid fa-xmark"></i>
-  </button>
-
-  <div class="max-w-6xl w-full">
-    <img
-      id="viewerImage"
-      src=""
-      alt="Image du spot"
-      class="max-h-[85vh] w-full object-contain rounded-3xl shadow-2xl"
-    >
+    </footer>
   </div>
 
-</div>
+  <!-- Image fullscreen viewer -->
+  <div id="imageViewer" class="modal-backdrop fixed inset-0 bg-slate-950/90 z-[90] flex items-center justify-center p-4">
+    <button id="closeImageViewer" class="absolute top-5 right-5 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-xl">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+
+    <div class="max-w-6xl w-full">
+      <img id="viewerImage" src="" alt="Image du spot" class="max-h-[85vh] w-full object-contain rounded-3xl shadow-2xl">
+    </div>
   </div>
 
   <!-- Toast / modal -->
@@ -764,22 +758,6 @@ function logoutUser() {
   showToast('Déconnexion', 'Tu es maintenant déconnecté.');
   setRoute('home');
 }
-routeButtons.forEach(btn => {
-  btn.addEventListener('click', (e) => {
-
-    if (btn.id === 'authButton' && getConnectedUser()) {
-      e.preventDefault();
-      e.stopPropagation();
-
-      const authMenu = document.getElementById('authMenu');
-      authMenu?.classList.toggle('hidden');
-
-      return;
-    }
-
-    setRoute(btn.dataset.route);
-  });
-});
 document.addEventListener('click', (e) => {
   const authMenu = document.getElementById('authMenu');
 
@@ -925,25 +903,23 @@ window.addEventListener('load', () => {
   const routeFromHash = window.location.hash.replace('#', '') || 'home';
   setRoute(routeFromHash, false);
 });
+    routeButtons.forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const route = btn.dataset.route;
 
-   routeButtons.forEach(btn => {
-  btn.addEventListener('click', (e) => {
+        if (btn.id === 'authButton' && getConnectedUser()) {
+          e.preventDefault();
+          e.stopPropagation();
 
-    if (btn.id === 'authButton' && getConnectedUser()) {
-      e.preventDefault();
+          const authMenu = document.getElementById('authMenu');
+          if (authMenu) authMenu.classList.toggle('hidden');
+          return;
+        }
 
-      const authMenu = document.getElementById('authMenu');
+        if (route) setRoute(route);
+      });
+    });
 
-      if (authMenu) {
-        authMenu.classList.toggle('hidden');
-      }
-
-      return;
-    }
-
-    setRoute(btn.dataset.route);
-  });
-});
 
     document.getElementById('mobileToggle').addEventListener('click', () => {
       mobileMenu.classList.toggle('open');
