@@ -870,6 +870,10 @@ chargerSpotsDepuisAPI().then(() => {
     const mobileMenu = document.getElementById('mobileMenu');
 
     function setRoute(route, addToHistory = true) {
+        if (route === 'add' && !localStorage.getItem('finblasti_token')) {
+    showToast('Connexion requise', 'Tu dois te connecter avant d’ajouter un spot.');
+    route = 'login';
+  }
   pages.forEach(page => page.classList.remove('active', 'fade-in'));
 
   const target = document.getElementById(`page-${route}`);
