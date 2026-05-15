@@ -32,7 +32,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 10 * 1024 * 1024 // 10 Mo max
+    fileSize: 10 * 1024 * 1024
   },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
@@ -51,7 +51,7 @@ const pool = new Pool({
 });
 
 // ===== TEST CONNEXION =====
-pool.query('SELECT NOW()', (err, res) => {
+pool.query('SELECT NOW()', (err) => {
   if (err) {
     console.error('❌ ERREUR - Impossible de se connecter à Supabase:', err.message);
   } else {
@@ -112,7 +112,7 @@ app.post('/api/auth/request-code', async (req, res) => {
     const code = generateCode();
     const codeHash = hashCode(code);
 
-    const result = await pool.query(
+    await pool.query(
       `
       INSERT INTO auth_codes
       (
@@ -302,6 +302,21 @@ app.post('/api/spots', requireAuth, upload.single('photo'), async (req, res) => 
 
     const score = ((wifi + quiet + comfort + eco) / 4).toFixed(1);
 
+    const userResult = await pool.query(
+      `
+      SELECT name, email
+      FROM users
+      WHERE id = $1
+      LIMIT 1
+      `,
+      [req.user.userId]
+    );
+
+    const connectedUser = userResult.rows[0] || {
+      name: null,
+      email: req.user.email
+    };
+
     let imageUrl = null;
     let imagePublicId = null;
 
@@ -342,10 +357,12 @@ app.post('/api/spots', requireAuth, upload.single('photo'), async (req, res) => 
         description,
         image,
         image_public_id,
-        user_id
+        user_id,
+        user_name,
+        user_email
       )
       VALUES
-      ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+      ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
       RETURNING *
       `,
       [
@@ -361,7 +378,9 @@ app.post('/api/spots', requireAuth, upload.single('photo'), async (req, res) => 
         description,
         imageUrl,
         imagePublicId,
-        req.user.userId
+        req.user.userId,
+        connectedUser.name,
+        connectedUser.email
       ]
     );
 
@@ -434,6 +453,21 @@ app.post('/api/reviews', async (req, res) => {
       error: 'Erreur ajout avis'
     });
   }
+});
+
+// ===== GESTION ERREURS UPLOAD =====
+app.use((err, req, res, next) => {
+  console.error('❌ Erreur globale:', err);
+
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      error: 'Photo trop grande. Choisis une image de moins de 10 Mo.'
+    });
+  }
+
+  res.status(500).json({
+    error: err.message || 'Erreur serveur'
+  });
 });
 
 // ===== DÉMARRAGE SERVEUR =====
