@@ -1443,7 +1443,7 @@ updateAuthUI();
 showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
 setRoute('add');
         } else {
-          showToast('Code incorrect', result.error || 'Vérifie le code.', 'error');
+          showToast('Code incorrect', 'Le code saisi est incorrect ou expiré.');
         }
       } catch (error) {
         showToast('Erreur', error.message, 'error');
