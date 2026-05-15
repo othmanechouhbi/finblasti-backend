@@ -774,17 +774,34 @@ chargerSpotsDepuisAPI().then(() => {
     const routeButtons = document.querySelectorAll('[data-route]');
     const mobileMenu = document.getElementById('mobileMenu');
 
-    function setRoute(route) {
-      pages.forEach(page => page.classList.remove('active', 'fade-in'));
-      const target = document.getElementById(`page-${route}`);
-      if (target) {
-        target.classList.add('active');
-        setTimeout(() => target.classList.add('fade-in'), 5);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        if (typeof applyLanguage === 'function') applyLanguage();
-      }
-      mobileMenu.classList.remove('open');
+    function setRoute(route, addToHistory = true) {
+  pages.forEach(page => page.classList.remove('active', 'fade-in'));
+
+  const target = document.getElementById(`page-${route}`);
+
+  if (target) {
+    target.classList.add('active');
+    setTimeout(() => target.classList.add('fade-in'), 5);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (addToHistory) {
+      history.pushState({ route }, '', `#${route}`);
     }
+
+    if (typeof applyLanguage === 'function') applyLanguage();
+  }
+
+  mobileMenu.classList.remove('open');
+}
+window.addEventListener('popstate', (event) => {
+  const route = event.state?.route || 'home';
+  setRoute(route, false);
+});
+
+window.addEventListener('load', () => {
+  const routeFromHash = window.location.hash.replace('#', '') || 'home';
+  setRoute(routeFromHash, false);
+});
 
     routeButtons.forEach(btn => {
       btn.addEventListener('click', () => setRoute(btn.dataset.route));
