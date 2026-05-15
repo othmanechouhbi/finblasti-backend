@@ -696,7 +696,24 @@
           <button data-route="add" class="hover:text-primary">Ajouter</button>
         </div>
       </div>
-    </footer>
+    
+      <div id="imageViewer" class="modal-backdrop fixed inset-0 bg-slate-950/90 z-[90] flex items-center justify-center p-4">
+
+  <button id="closeImageViewer"
+    class="absolute top-5 right-5 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 text-white text-xl">
+    <i class="fa-solid fa-xmark"></i>
+  </button>
+
+  <div class="max-w-6xl w-full">
+    <img
+      id="viewerImage"
+      src=""
+      alt="Image du spot"
+      class="max-h-[85vh] w-full object-contain rounded-3xl shadow-2xl"
+    >
+  </div>
+
+</div>
   </div>
 
   <!-- Toast / modal -->
@@ -902,14 +919,57 @@ window.addEventListener('load', () => {
   setRoute(routeFromHash, false);
 });
 
-    routeButtons.forEach(btn => {
-      btn.addEventListener('click', () => setRoute(btn.dataset.route));
-    });
+   routeButtons.forEach(btn => {
+  btn.addEventListener('click', (e) => {
+
+    if (btn.id === 'authButton' && getConnectedUser()) {
+      e.preventDefault();
+
+      const authMenu = document.getElementById('authMenu');
+
+      if (authMenu) {
+        authMenu.classList.toggle('hidden');
+      }
+
+      return;
+    }
+
+    setRoute(btn.dataset.route);
+  });
+});
 
     document.getElementById('mobileToggle').addEventListener('click', () => {
       mobileMenu.classList.toggle('open');
     });
+document.addEventListener('click', (e) => {
 
+  const image = e.target.closest('.spot-image-click');
+
+  if (!image) return;
+
+  const viewer = document.getElementById('imageViewer');
+  const viewerImage = document.getElementById('viewerImage');
+
+  viewerImage.src = image.dataset.fullImage || image.src;
+
+  viewer.classList.add('open');
+});
+
+document.getElementById('closeImageViewer')?.addEventListener('click', () => {
+  document.getElementById('imageViewer')?.classList.remove('open');
+});
+
+document.getElementById('imageViewer')?.addEventListener('click', (e) => {
+  if (e.target.id === 'imageViewer') {
+    document.getElementById('imageViewer')?.classList.remove('open');
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.getElementById('imageViewer')?.classList.remove('open');
+  }
+});
     function renderStars(rating) {
       const full = Math.round(rating);
       return Array.from({ length: 5 }, (_, i) => `<i class="fa-solid fa-star ${i < full ? 'text-yellow-400' : 'text-slate-300 dark:text-slate-700'}"></i>`).join('');
@@ -925,7 +985,12 @@ window.addEventListener('load', () => {
           </div>
 
           <div class="${compact ? 'h-48' : 'h-56'} bg-slate-200 dark:bg-slate-800 overflow-hidden">
-            <img src="${spot.image}" alt="${spot.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+            <img 
+  src="${spot.image}" 
+  alt="${spot.name}"
+  data-full-image="${spot.image}"
+  class="spot-image-click w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 cursor-zoom-in"
+>
           </div>
 
           <div class="p-6">
@@ -1089,7 +1154,12 @@ window.addEventListener('load', () => {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div class="lg:col-span-2">
             <div class="rounded-[2rem] overflow-hidden border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
-              <img src="${s.image}" alt="${s.name}" class="w-full h-[360px] object-cover">
+              <img 
+  src="${s.image}" 
+  alt="${s.name}"
+  data-full-image="${s.image}"
+  class="spot-image-click w-full h-[360px] object-cover cursor-zoom-in"
+>
               <div class="p-6 md:p-8">
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
                   <div>

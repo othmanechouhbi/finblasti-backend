@@ -32,7 +32,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 3 * 1024 * 1024 // 3 Mo max
+    fileSize: 10 * 1024 * 1024 // 10 Mo max
   },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith('image/')) {
