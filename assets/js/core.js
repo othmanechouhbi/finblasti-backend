@@ -8,7 +8,11 @@ FinBlasti.commentsBySpot = {};
 FinBlasti.getToken = () => localStorage.getItem('finblasti_token');
 
 FinBlasti.apiUrl = (path) => {
-  const base = (window.API_BASE_URL || '').replace(/\/$/, '');
+  const base = (
+    window.API_BASE_URL ||
+    window.FINBLASTI_API_URL?.replace(/\/api\/?$/, '') ||
+    'https://finblasti-backend-production.up.railway.app'
+  ).replace(/\/$/, '');
   const cleanPath = String(path || '').startsWith('/') ? path : `/${path}`;
   return `${base}/api${cleanPath}`;
 };

@@ -3,7 +3,7 @@
 FinBlasti.fetchComments = async function (spotId) {
   const key = String(spotId);
   try {
-    const data = await FinBlasti.apiFetch(`/comments?spot_id=${encodeURIComponent(key)}`);
+    const data = await FinBlasti.apiFetch(`/reviews?spot_id=${encodeURIComponent(key)}`);
     FinBlasti.commentsBySpot[key] = Array.isArray(data) ? data : [];
     return FinBlasti.commentsBySpot[key];
   } catch (e) {
@@ -75,10 +75,10 @@ FinBlasti.bindCommentsSection = async function (spotId) {
     submit.disabled = true;
     submit.textContent = 'Publication...';
     try {
-      const data = await FinBlasti.apiFetch('/comments', {
+      const data = await FinBlasti.apiFetch('/reviews', {
         method: 'POST',
         headers: FinBlasti.authHeaders(),
-        body: JSON.stringify({ spot_id: spotId, text })
+        body: JSON.stringify({ spot_id: spotId, text, rating: 5 })
       });
       document.getElementById('commentText').value = '';
       showToast('Commentaire publié', 'Merci pour ton retour à la communauté.');
