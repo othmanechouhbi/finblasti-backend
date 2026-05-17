@@ -652,3 +652,109 @@ body {
   width: 1.5rem;
   background: linear-gradient(90deg, #5b4cff, #00c2a8);
 }
+
+/* Morocco map decoration */
+.morocco-map-bg {
+  position: absolute;
+  inset: -10% -5% auto auto;
+  width: min(55vw, 420px);
+  height: auto;
+  opacity: 0.14;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark .morocco-map-bg {
+  opacity: 0.22;
+}
+
+.morocco-map-svg {
+  width: 100%;
+  height: auto;
+}
+
+.morocco-outline {
+  stroke: #5b4cff;
+  stroke-width: 1.5;
+  fill: rgba(91, 76, 255, 0.06);
+}
+
+.morocco-route {
+  stroke: #00c2a8;
+  stroke-width: 1.2;
+  stroke-dasharray: 6 8;
+  fill: none;
+  opacity: 0.7;
+}
+
+.map-dot {
+  fill: #5b4cff;
+  opacity: 0.85;
+}
+
+.dark .morocco-outline {
+  fill: rgba(91, 76, 255, 0.12);
+}
+
+/* Theme toggle */
+.theme-toggle {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.theme-toggle-track {
+  display: block;
+  width: 3rem;
+  height: 1.65rem;
+  border-radius: 999px;
+  background: #e2e8f0;
+  border: 1px solid #cbd5e1;
+  position: relative;
+  transition: background 0.25s ease;
+}
+
+.dark .theme-toggle-track {
+  background: #334155;
+  border-color: #475569;
+}
+
+.theme-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: linear-gradient(135deg, #5b4cff, #00c2a8);
+  box-shadow: 0 4px 12px rgba(91, 76, 255, 0.35);
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.dark .theme-toggle-thumb {
+  transform: translateX(1.35rem);
+}
+
+.save-spot-btn.is-saved {
+  border-color: rgba(91, 76, 255, 0.45) !important;
+  background: rgba(91, 76, 255, 0.1) !important;
+}
+
+#discoverCount {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.dark #discoverCount {
+  color: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  .morocco-map-bg {
+    width: 70vw;
+    right: -15%;
+    opacity: 0.1;
+  }
+}

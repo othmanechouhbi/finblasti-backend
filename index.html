@@ -52,6 +52,7 @@
         <div class="hidden md:flex items-center space-x-8 font-medium text-slate-600 dark:text-slate-300">
           <button data-route="discover" class="nav-link hover:text-primary transition-colors">Découvrir</button>
           <button data-route="top" class="nav-link hover:text-primary transition-colors">Top Spots</button>
+          <button data-route="saved" class="nav-link hover:text-primary transition-colors">Enregistrés</button>
           <button data-route="community" class="nav-link hover:text-primary transition-colors">Communauté</button>
           <button data-route="about" class="nav-link hover:text-primary transition-colors">Concept</button>
         </div>
@@ -80,11 +81,12 @@
             </div>
           </div>
 
-          <!-- Theme selector -->
-          <div class="relative">
-            <button id="themeButton" class="w-10 h-10 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center text-slate-700 dark:text-slate-200 hover:border-primary transition-colors" aria-label="Paramètres du thème">
-              <i id="themeIcon" class="fa-solid fa-circle-half-stroke"></i>
+          <!-- Theme toggle -->
+          <div class="relative flex items-center gap-2">
+            <button id="themeToggle" type="button" class="theme-toggle" aria-label="Changer le thème">
+              <span class="theme-toggle-track"><span class="theme-toggle-thumb"></span></span>
             </button>
+            <button id="themeButton" class="hidden" aria-hidden="true"><i id="themeIcon" class="fa-solid fa-moon"></i></button>
 
             <div id="themeMenu" class="hidden absolute right-0 mt-3 w-56 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-xl p-2">
               <button data-theme="light" class="theme-option w-full text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-3">
@@ -137,6 +139,7 @@
         <div class="pb-5 flex flex-col gap-2 text-slate-700 dark:text-slate-200 font-semibold">
           <button data-route="discover" class="text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">Découvrir</button>
           <button data-route="top" class="text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">Top Spots</button>
+          <button data-route="saved" class="text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">Spots enregistrés</button>
           <button data-route="community" class="text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">Communauté</button>
           <button data-route="about" class="text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">Concept</button>
           <button data-route="login" class="text-left px-4 py-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">Connexion</button>
@@ -150,7 +153,7 @@
     <button data-route="home" class="mobile-nav-item active"><i class="fa-solid fa-house"></i><span>Accueil</span></button>
     <button data-route="discover" class="mobile-nav-item"><i class="fa-solid fa-magnifying-glass"></i><span>Explorer</span></button>
     <button data-route="top" class="mobile-nav-item"><i class="fa-solid fa-ranking-star"></i><span>Top</span></button>
-    <button data-route="community" class="mobile-nav-item"><i class="fa-solid fa-comments"></i><span>Avis</span></button>
+    <button data-route="saved" class="mobile-nav-item"><i class="fa-solid fa-bookmark"></i><span>Sauvés</span></button>
     <button data-route="add" class="mobile-nav-item"><i class="fa-solid fa-plus"></i><span>Ajouter</span></button>
   </div>
 
@@ -160,8 +163,16 @@
     <!-- HOME PAGE -->
     <main id="page-home" class="page active fade-in">
       <!-- Hero Section -->
-      <section class="hero-grid px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-8 md:py-14 grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-8 lg:gap-12 items-center">
-        <div>
+      <section class="hero-grid relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-8 md:py-14 grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-8 lg:gap-12 items-center overflow-hidden">
+        <div class="morocco-map-bg" aria-hidden="true">
+          <svg class="morocco-map-svg" viewBox="0 0 360 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path class="morocco-outline" d="M48 118 L92 88 L148 72 L210 68 L278 82 L318 118 L332 168 L328 228 L302 288 L248 332 L178 348 L108 328 L62 278 L42 218 L38 158 Z"/>
+            <path class="morocco-route" d="M72 200 Q120 160 168 178 T248 192 T298 248"/>
+            <circle class="map-dot" cx="92" cy="198" r="4"/><circle class="map-dot" cx="118" cy="168" r="4"/><circle class="map-dot" cx="148" cy="175" r="4"/>
+            <circle class="map-dot" cx="168" cy="248" r="4"/><circle class="map-dot" cx="198" cy="142" r="4"/><circle class="map-dot" cx="248" cy="128" r="4"/><circle class="map-dot" cx="128" cy="298" r="4"/>
+          </svg>
+        </div>
+        <div class="relative z-[1]">
           <div class="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-white/80 dark:bg-slate-900/80 text-primary dark:text-indigo-300 font-extrabold text-xs sm:text-sm mb-6 border border-indigo-100 dark:border-indigo-900 shadow-sm">
             <span class="relative flex h-3 w-3">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
@@ -441,7 +452,7 @@
                 <label class="flex items-center gap-3 text-sm"><input class="need-filter" type="checkbox" value="eco"> Éco-friendly</label>
               </div>
 
-              <button id="resetFilters" class="mt-6 w-full rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-3 font-bold hover:bg-slate-200 dark:hover:bg-slate-700">Réinitialiser</button>
+              <button id="resetFilters" type="button" class="mt-6 w-full rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 py-3 font-bold hover:bg-slate-200 dark:hover:bg-slate-700">Réinitialiser / Tout afficher</button>
             </div>
           </aside>
 
@@ -456,7 +467,8 @@
               </button>
             </div>
 
-            <div id="discoverCards" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            <p id="discoverCount" class="mb-4" aria-live="polite"></p>
+            <motion id="discoverCards"
           </div>
         </div>
       </div>
@@ -479,6 +491,16 @@
         <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl overflow-hidden">
           <div id="rankingList"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- SAVED PAGE -->
+    <section id="page-saved" class="page fade-in">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <button data-route="home" class="text-primary font-semibold mb-4"><i class="fa-solid fa-arrow-left mr-2"></i>Retour</button>
+        <h1 class="text-4xl font-extrabold text-slate-900 dark:text-white">Spots enregistrés</h1>
+        <p class="text-slate-500 dark:text-slate-400 mt-3 mb-8">Retrouve rapidement tes adresses préférées pour travailler.</p>
+        <div id="savedCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
       </div>
     </section>
 
@@ -726,4 +748,7 @@
     </div>
   </div>
   <script src="assets/js/config.js"></script>
+  <script src="assets/js/core.js"></script>
+  <script src="assets/js/favorites.js"></script>
+  <script src="assets/js/comments.js"></script>
   <script defer src="assets/js/app.js"></script>

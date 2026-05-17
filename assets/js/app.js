@@ -49,7 +49,7 @@ function refreshScrollReveals(scope = document) {
 
   gsap.registerPlugin(ScrollTrigger);
   ScrollTrigger.normalizeScroll(false);
-  const targets = gsap.utils.toArray(scope.querySelectorAll('section, .card-hover, aside > div, #rankingList > div, #reviewsList > div'));
+  const targets = gsap.utils.toArray(scope.querySelectorAll('section:not(#page-discover):not(#page-top) .metric-card, aside > div, .hero-visual'));
 
   targets.forEach(el => {
     if (el.dataset.revealBound) return;
@@ -87,13 +87,12 @@ function refreshScrollReveals(scope = document) {
 
 function animateDynamicList(container) {
   if (!container) return;
-  refreshScrollReveals(container);
+  FinBlasti.forceVisible(container);
   if (reduceMotion || !hasGSAP()) return;
-
   gsap.fromTo(
     container.children,
-    { autoAlpha: 0, y: 18, scale: 0.985 },
-    { autoAlpha: 1, y: 0, scale: 1, duration: 0.42, stagger: 0.045, ease: 'power3.out', clearProps: 'opacity,visibility,transform' }
+    { autoAlpha: 0, y: 10 },
+    { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.025, ease: 'power2.out', clearProps: 'all' }
   );
 }
 
@@ -224,24 +223,12 @@ async function chargerSpotsDepuisAPI() {
     
     if (donnees.length > 0) {
       console.log('✅ ' + donnees.length + ' spots chargés depuis l\'API');
-      spots = donnees.map(s => ({
-        ...s,
-        id: s.id || s._id,
-        image: s.image || 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=1200',
-        reviewsText: s.reviewsText || [],
-        tags: s.tags || [],
-        badges: s.badges || ['🚀 Wi-Fi', '🔌 Prises', '🎓 Étudiant'],
-        reviews: s.reviews || 0,
-        price: s.price || 'Prix variable',
-        hours: s.hours || 'Horaires non renseignés',
-        address: s.address || `${s.district || ''}, ${s.city || ''}`,
-        description: s.description || 'Aucune description disponible pour ce spot.'
-      }));
+      spots = donnees.map((s) => FinBlasti.normalizeSpot({ ...s, id: s.id || s._id }));
     } else {
       console.log('⚠️ Aucun spot trouvé, utilisation des données d\'exemple');
       // Données d'exemple si la BD est vide
       spots = [
-        {
+        FinBlasti.normalizeSpot({
           id: 'le-hub-cafe',
           name: 'Le Hub Café',
           city: 'Casablanca',
@@ -264,8 +251,7 @@ async function chargerSpotsDepuisAPI() {
             { user: 'Sara M.', text: 'Très bon Wi-Fi, tables confortables.', rating: 5 },
             { user: 'Yassine A.', text: 'Bon spot pour travailler le matin.', rating: 5 }
           ]
-        }
-        // Ajoutez les autres spots d'exemple ici si vous voulez
+        })
       ];
     }
     
@@ -279,7 +265,7 @@ async function chargerSpotsDepuisAPI() {
 
 // Charger les spots au démarrage
 renderLoadingCards();
-Promise.all([chargerSpotsDepuisAPI(), chargerReviewsDepuisAPI()]).then(() => {
+Promise.all([chargerSpotsDepuisAPI(), chargerReviewsDepuisAPI(), FinBlasti.loadFavorites()]).then(() => {
   updateAuthUI();
   renderHomeCards();
   renderTrending();
@@ -321,6 +307,19 @@ Promise.all([chargerSpotsDepuisAPI(), chargerReviewsDepuisAPI()]).then(() => {
     }
 
     if (typeof applyLanguage === 'function') applyLanguage();
+
+    if (route === 'discover') {
+      renderDiscover();
+      requestAnimationFrame(() => FinBlasti.forceVisible(target));
+    } else if (route === 'top') {
+      renderRanking();
+      requestAnimationFrame(() => FinBlasti.forceVisible(target));
+    } else if (route === 'saved') {
+      renderSaved();
+      requestAnimationFrame(() => FinBlasti.forceVisible(target));
+    } else if (route === 'community') {
+      renderReviews();
+    }
   }
 
   mobileMenu.classList.remove('open');
@@ -398,6 +397,7 @@ document.addEventListener('keydown', (e) => {
       const reviewCount = spot.reviewCount ?? spot.reviews ?? 0;
       return `
         <article class="spot-card spot-card-premium card-hover relative group">
+          <div class="absolute top-4 left-4 z-10">${FinBlasti.saveButtonHtml(spot.id)}</div>
           <div class="absolute top-4 right-4 z-10">
             <div class="${spot.score >= 9.5 ? 'finscore-gradient' : 'bg-slate-900 dark:bg-white dark:text-slate-900'} text-white font-bold text-lg px-3 py-1 rounded-xl shadow-lg flex items-center gap-1">
               ${spot.score >= 9.5 ? '<i class="fa-solid fa-bolt text-xs text-yellow-300"></i>' : ''} ${spot.score}
@@ -438,15 +438,28 @@ document.addEventListener('keydown', (e) => {
               <div class="flex items-center gap-2">
                 <span class="text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-comment-dots mr-1"></i>${reviewCount} avis</span>
               </div>
-              <button data-detail="${spot.id}" class="detail-btn text-primary font-semibold text-sm hover:underline">Voir détails <i class="fa-solid fa-arrow-right ml-1"></i></button>
+              <button data-detail="${spot.id}" class="detail-btn text-primary font-semibold text-sm hover:underline">Détails</button><button type="button" data-comment-spot="${spot.id}" class="ml-2 text-xs font-bold text-slate-500 hover:text-primary">Commenter</button>
             </div>
           </div>
         </article>
       `;
     }
 
-    // Event delegation for detail buttons - works even after dynamic re-render
+    // Event delegation — save, comment, details
     document.addEventListener('click', (e) => {
+      const saveBtn = e.target.closest('[data-save-spot]');
+      if (saveBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        FinBlasti.toggleFavorite(saveBtn.dataset.saveSpot);
+        return;
+      }
+      const commentBtn = e.target.closest('[data-comment-spot]');
+      if (commentBtn) {
+        e.preventDefault();
+        openDetail(commentBtn.dataset.commentSpot);
+        return;
+      }
       const btn = e.target.closest('.detail-btn');
       if (btn && btn.dataset.detail) openDetail(btn.dataset.detail);
     });
@@ -456,6 +469,23 @@ document.addEventListener('keydown', (e) => {
     }
 
     
+    function renderSaved() {
+      const grid = document.getElementById('savedCards');
+      if (!grid) return;
+      if (!FinBlasti.getToken()) {
+        grid.innerHTML = emptyState('Connecte-toi pour voir tes spots enregistrés.');
+        return;
+      }
+      const saved = spots.filter((s) => FinBlasti.isSaved(s.id));
+      grid.innerHTML = saved.length
+        ? saved.map((s) => spotCard(s, true)).join('')
+        : emptyState('Tu n\'as pas encore enregistré de spot. Utilise l\'icône signet sur une carte.');
+      FinBlasti.forceVisible(grid);
+      animateDynamicList(grid);
+      grid.querySelectorAll('[data-save-spot]').forEach((btn) => FinBlasti.updateSaveButton(btn, btn.dataset.saveSpot));
+      if (typeof applyLanguage === 'function') applyLanguage();
+    }
+
     function renderTrending() {
       const rail = document.getElementById('trendingRail');
       if (!rail) return;
@@ -505,15 +535,22 @@ document.addEventListener('keydown', (e) => {
         const matchCity = city === 'all' || s.city === city;
         const matchType = type === 'all' || s.type === type;
         const matchQuery = !query || `${s.name} ${s.city} ${s.district} ${s.type}`.toLowerCase().includes(query);
-        const matchNeeds = needs.length === 0 || needs.every(n => s.tags.includes(n));
+        const matchNeeds = FinBlasti.matchSpotNeeds(s, needs);
         return matchCity && matchType && matchQuery && matchNeeds;
       });
 
       result.sort((a, b) => scoreSortDesc ? b.score - a.score : a.score - b.score);
 
       const container = document.getElementById('discoverCards');
-      container.innerHTML = result.map(s => spotCard(s, true)).join('') || emptyState('Aucun résultat. Essaie de modifier les filtres.');
+      const countEl = document.getElementById('discoverCount');
+      if (countEl) {
+        countEl.textContent = result.length
+          ? `${result.length} spot${result.length > 1 ? 's' : ''} trouvé${result.length > 1 ? 's' : ''}`
+          : 'Aucun spot ne correspond — réinitialise les filtres pour tout afficher.';
+      }
+      container.innerHTML = result.map(s => spotCard(s, true)).join('') || emptyState('Aucun résultat. Essaie « Réinitialiser / Tout afficher ».');
       attachDetailButtons();
+      container.querySelectorAll('[data-save-spot]').forEach((btn) => FinBlasti.updateSaveButton(btn, btn.dataset.saveSpot));
       animateDynamicList(container);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
@@ -539,27 +576,31 @@ document.addEventListener('keydown', (e) => {
     });
 
     function renderRanking() {
-      const sorted = [...spots].sort((a, b) => b.score - a.score);
-      document.getElementById('rankingList').innerHTML = sorted.map((s, index) => `
-        <div class="flex flex-col md:flex-row md:items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors">
+      const topSpots = FinBlasti.getTopSpots(spots);
+      const el = document.getElementById('rankingList');
+      if (!topSpots.length) {
+        el.innerHTML = emptyState('Aucun top spot pour le moment. Découvre tous les lieux disponibles.');
+        FinBlasti.forceVisible(el);
+        return;
+      }
+      el.innerHTML = topSpots.map((s, index) => `
+        <div class="flex flex-col md:flex-row md:items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors card-hover">
           <div class="w-12 h-12 rounded-2xl ${index < 3 ? 'finscore-gradient text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'} flex items-center justify-center font-extrabold text-lg">#${index + 1}</div>
           <img src="${s.image}" alt="${s.name}" class="w-full md:w-28 h-24 rounded-2xl object-cover">
           <div class="flex-1">
             <h3 class="font-extrabold text-lg text-slate-900 dark:text-white">${s.name}</h3>
             <p class="text-sm text-slate-500 dark:text-slate-400">${s.type} · ${s.district}, ${s.city}</p>
-            <div class="flex flex-wrap gap-2 mt-2">${(s.badges || ['🚀 Wi-Fi', '🔌 Prises']).slice(0,2).map(b => `<span class="bg-slate-100 dark:bg-slate-800 text-xs px-2 py-1 rounded-md">${b}</span>`).join('')}</div>
           </div>
-          <div class="flex items-center gap-4">
-            <div>
-              <p class="text-2xl font-extrabold text-slate-900 dark:text-white">${s.score}</p>
-              <p class="text-xs text-slate-500 dark:text-slate-400">FinScore</p>
-            </div>
-            <button data-detail="${s.id}" class="detail-btn rounded-full bg-primary text-white px-5 py-2.5 font-bold hover:bg-primaryHover">Voir</button>
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="text-center"><p class="text-2xl font-extrabold">${s.score}</p><p class="text-xs text-slate-400">FinScore</p></div>
+            ${FinBlasti.saveButtonHtml(s.id)}
+            <button data-detail="${s.id}" class="detail-btn rounded-full bg-primary text-white px-5 py-2.5 font-bold">Voir</button>
           </div>
         </div>
-      `).join('');
-      attachDetailButtons();
-      animateDynamicList(document.getElementById('rankingList'));
+      `).join('').replace(/<\/?motion>/g, (m) => (m.startsWith('</') ? '</div>' : '<div'));
+      el.querySelectorAll('[data-save-spot]').forEach((btn) => FinBlasti.updateSaveButton(btn, btn.dataset.saveSpot));
+      FinBlasti.forceVisible(el);
+      animateDynamicList(el);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
 
@@ -598,7 +639,7 @@ document.addEventListener('keydown', (e) => {
     }
 
     function openDetail(id) {
-      const s = spots.find(item => item.id === id);
+      const s = FinBlasti.findSpot(spots, id);
       if (!s) return;
 
       document.getElementById('detailContent').innerHTML = `
@@ -649,9 +690,10 @@ document.addEventListener('keydown', (e) => {
                   </div>
                 </div>
 
+                ${FinBlasti.commentsSectionHtml(s.id)}
                 <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white mt-10 mb-4">Avis récents</h2>
                 <div class="space-y-4">
-                  ${s.reviewsText.map(r => `
+                  ${(s.reviewsText || []).map(r => `
                     <div class="rounded-3xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 p-5">
                       <div class="flex justify-between gap-4">
                         <p class="font-bold">${r.user}</p>
@@ -674,7 +716,7 @@ document.addEventListener('keydown', (e) => {
                 <p><i class="fa-solid fa-comment text-primary w-6"></i> ${s.reviews} avis</p>
                 <p><i class="fa-solid fa-map-location-dot text-primary w-6"></i> ${s.address}</p>
               </div>
-              <button id="saveFavorite" class="mt-6 w-full rounded-full bg-primary text-white py-3 font-bold hover:bg-primaryHover"><i class="fa-solid fa-bookmark mr-2"></i>Enregistrer</button>
+              <button id="saveFavorite" data-save-spot="${s.id}" type="button" class="save-spot-btn mt-6 w-full rounded-full bg-primary text-white py-3 font-bold hover:bg-primaryHover"><i class="fa-regular fa-bookmark mr-2"></i><span>Enregistrer</span></button>
             </div>
 
             <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-100 dark:border-slate-800">
@@ -695,8 +737,13 @@ document.addEventListener('keydown', (e) => {
         </div>
       `;
 
-      document.querySelector('#detailContent [data-route="discover"]').addEventListener('click', () => setRoute('discover'));
-      document.getElementById('saveFavorite').addEventListener('click', () => showToast('Spot enregistré', `${s.name} a été ajouté à tes favoris.`));
+      
+      const saveBtn = document.getElementById('saveFavorite');
+      FinBlasti.updateSaveButton(saveBtn, s.id);
+      FinBlasti.bindCommentsSection(s.id);
+      document.getElementById('detailContent').querySelectorAll('[data-route]').forEach((b) => {
+        b.addEventListener('click', () => setRoute(b.dataset.route));
+      });
       refreshScrollReveals(document.getElementById('detailContent'));
       if (typeof applyLanguage === 'function') applyLanguage();
       setRoute('detail');
@@ -923,6 +970,7 @@ if (
 localStorage.setItem('finblasti_user', JSON.stringify(result.user));
 
 updateAuthUI();
+await FinBlasti.loadFavorites();
 
 showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
 setRoute('add');
@@ -1684,6 +1732,26 @@ setRoute('add');
     prefersDark.addEventListener('change', () => {
       if ((localStorage.getItem('finblasti-theme') || 'auto') === 'auto') applyTheme('auto');
     });
+
+    const themeToggle = document.getElementById('themeToggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.classList.contains('dark');
+        applyTheme(isDark ? 'light' : 'dark');
+      });
+    }
+
+    if (hasGSAP() && !reduceMotion) {
+      gsap.to('.map-dot', {
+        scale: 1.35,
+        opacity: 1,
+        duration: 1.2,
+        stagger: 0.15,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut'
+      });
+    }
 
     // Initial renders
     applyTheme(localStorage.getItem('finblasti-theme') || 'auto');

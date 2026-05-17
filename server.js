@@ -399,8 +399,18 @@ app.post('/api/spots', requireAuth, upload.single('photo'), async (req, res) => 
 // ===== ROUTE : TOUS LES AVIS =====
 app.get('/api/reviews', async (req, res) => {
   try {
+    const spotId = req.query.spot_id;
+
+    if (spotId) {
+      const result = await pool.query(
+        'SELECT * FROM reviews WHERE spot_id = $1 ORDER BY created_at DESC NULLS LAST',
+        [spotId]
+      );
+      return res.json(result.rows);
+    }
+
     const result = await pool.query(
-      'SELECT * FROM reviews ORDER BY created_at DESC'
+      'SELECT * FROM reviews ORDER BY created_at DESC NULLS LAST'
     );
 
     res.json(result.rows);
@@ -414,16 +424,148 @@ app.get('/api/reviews', async (req, res) => {
   }
 });
 
+// ===== FAVORIS =====
+app.get('/api/favorites', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT spot_id, created_at FROM saved_spots WHERE user_id = $1 ORDER BY created_at DESC',
+      [req.user.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Erreur favorites GET:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/favorites', requireAuth, async (req, res) => {
+  try {
+    const spotId = req.body.spot_id;
+    if (!spotId) {
+      return res.status(400).json({ error: 'spot_id requis' });
+    }
+
+    await pool.query(
+      `INSERT INTO saved_spots (user_id, spot_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, spot_id) DO NOTHING`,
+      [req.user.userId, spotId]
+    );
+
+    res.status(201).json({ saved: true, spot_id: spotId });
+  } catch (err) {
+    console.error('❌ Erreur favorites POST:', err);
+    if (err.code === '42P01') {
+      return res.status(503).json({
+        error: 'Table saved_spots manquante. Exécute supabase/schema.sql dans Supabase.'
+      });
+    }
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.delete('/api/favorites/:spotId', requireAuth, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM saved_spots WHERE user_id = $1 AND spot_id = $2',
+      [req.user.userId, req.params.spotId]
+    );
+    res.json({ saved: false, spot_id: req.params.spotId });
+  } catch (err) {
+    console.error('❌ Erreur favorites DELETE:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// ===== COMMENTAIRES =====
+app.get('/api/comments', async (req, res) => {
+  try {
+    const spotId = req.query.spot_id;
+    if (!spotId) {
+      return res.status(400).json({ error: 'spot_id requis' });
+    }
+
+    const result = await pool.query(
+      `SELECT id, spot_id, user_name, user_email, text, created_at
+       FROM spot_comments
+       WHERE spot_id = $1
+       ORDER BY created_at DESC`,
+      [spotId]
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('❌ Erreur comments GET:', err);
+    if (err.code === '42P01') {
+      return res.json([]);
+    }
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/comments', requireAuth, async (req, res) => {
+  try {
+    const spotId = req.body.spot_id;
+    const text = String(req.body.text || '').trim();
+
+    if (!spotId) {
+      return res.status(400).json({ error: 'spot_id requis' });
+    }
+    if (!text) {
+      return res.status(400).json({ error: 'Commentaire vide' });
+    }
+    if (text.length > 500) {
+      return res.status(400).json({ error: 'Commentaire trop long (500 max)' });
+    }
+
+    const userResult = await pool.query(
+      'SELECT name, email FROM users WHERE id = $1 LIMIT 1',
+      [req.user.userId]
+    );
+    const user = userResult.rows[0] || {
+      name: req.user.email?.split('@')[0] || 'Utilisateur',
+      email: req.user.email
+    };
+
+    const result = await pool.query(
+      `INSERT INTO spot_comments (spot_id, user_id, user_name, user_email, text)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [spotId, req.user.userId, user.name, user.email, text]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('❌ Erreur comments POST:', err);
+    if (err.code === '42P01') {
+      return res.status(503).json({
+        error: 'Table spot_comments manquante. Exécute supabase/schema.sql dans Supabase.'
+      });
+    }
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 // ===== ROUTE : AJOUTER AVIS =====
-app.post('/api/reviews', async (req, res) => {
-  const {
-    spot_id,
-    user_name,
-    text,
-    rating
-  } = req.body;
+app.post('/api/reviews', requireAuth, async (req, res) => {
+  const spot_id = req.body.spot_id;
+  const text = String(req.body.text || '').trim();
+  const rating = Number(req.body.rating) || 5;
+
+  if (!spot_id || !text) {
+    return res.status(400).json({ error: 'spot_id et texte requis' });
+  }
 
   try {
+    const userResult = await pool.query(
+      'SELECT name, email FROM users WHERE id = $1 LIMIT 1',
+      [req.user.userId]
+    );
+    const user = userResult.rows[0] || {
+      name: req.user.email?.split('@')[0] || 'Utilisateur',
+      email: req.user.email
+    };
+
     const result = await pool.query(
       `
       INSERT INTO reviews
@@ -437,12 +579,7 @@ app.post('/api/reviews', async (req, res) => {
       ($1,$2,$3,$4)
       RETURNING *
       `,
-      [
-        spot_id,
-        user_name,
-        text,
-        rating
-      ]
+      [spot_id, user.name, text, Math.min(5, Math.max(1, rating))]
     );
 
     res.status(201).json(result.rows[0]);
