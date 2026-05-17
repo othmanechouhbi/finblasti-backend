@@ -14,6 +14,10 @@
   <!-- FontAwesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+  <!-- GSAP animations -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -33,15 +37,37 @@
   </script>
 
   <style>
+    :root {
+      --surface: rgba(255, 255, 255, 0.88);
+      --surface-strong: #ffffff;
+      --line: rgba(148, 163, 184, 0.22);
+      --soft-shadow: 0 18px 55px -34px rgba(15, 23, 42, 0.45);
+      --lift-shadow: 0 28px 70px -34px rgba(79, 70, 229, 0.42);
+    }
+
     body {
       font-family: "Plus Jakarta Sans", sans-serif;
-      background-color: #F8FAFC;
+      background:
+        radial-gradient(circle at top left, rgba(79, 70, 229, 0.12), transparent 32rem),
+        radial-gradient(circle at 85% 10%, rgba(16, 185, 129, 0.12), transparent 28rem),
+        linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 46%, #F8FAFC 100%);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .dark body {
+      background:
+        radial-gradient(circle at top left, rgba(99, 102, 241, 0.18), transparent 32rem),
+        radial-gradient(circle at 88% 8%, rgba(16, 185, 129, 0.12), transparent 28rem),
+        linear-gradient(180deg, #020617 0%, #0F172A 48%, #020617 100%);
     }
 
     .glass-nav {
-      background: rgba(255, 255, 255, 0.82);
-      backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(226, 232, 240, 0.75);
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+      box-shadow: 0 18px 45px -36px rgba(15, 23, 42, 0.55);
     }
 
     .dark .glass-nav {
@@ -50,7 +76,7 @@
     }
 
     .finscore-gradient {
-      background: linear-gradient(135deg, #4F46E5 0%, #8B5CF6 100%);
+      background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 48%, #06B6D4 100%);
     }
 
     .eco-gradient {
@@ -58,12 +84,15 @@
     }
 
     .card-hover {
-      transition: all 0.3s ease;
+      transition: transform 0.32s ease, box-shadow 0.32s ease, border-color 0.32s ease;
+      box-shadow: var(--soft-shadow);
+      will-change: transform;
     }
 
     .card-hover:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 22px 30px -16px rgba(15, 23, 42, 0.25);
+      transform: translateY(-7px);
+      border-color: rgba(79, 70, 229, 0.24);
+      box-shadow: var(--lift-shadow);
     }
 
     .fade-in {
@@ -81,6 +110,113 @@
 
     .page.active {
       display: block;
+    }
+
+    .page {
+      min-height: calc(100vh - 5rem);
+    }
+
+    .reveal-ready {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+
+    .image-slot {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(79, 70, 229, 0.12), rgba(16, 185, 129, 0.12)),
+        #e2e8f0;
+    }
+
+    .image-slot::after {
+      content: "Image ready";
+      position: absolute;
+      left: 1rem;
+      bottom: 1rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.58);
+      color: white;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.24s ease, transform 0.24s ease;
+      pointer-events: none;
+    }
+
+    .image-slot:hover::after {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .magnetic-hover {
+      transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
+    }
+
+    .magnetic-hover:hover {
+      transform: translateY(-2px);
+    }
+
+    .soft-panel {
+      background: var(--surface);
+      border-color: var(--line);
+      box-shadow: var(--soft-shadow);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .dark .soft-panel {
+      background: rgba(15, 23, 42, 0.84);
+      border-color: rgba(51, 65, 85, 0.72);
+      box-shadow: 0 24px 70px -42px rgba(0, 0, 0, 0.85);
+    }
+
+    .nav-link {
+      position: relative;
+    }
+
+    .nav-link::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -0.45rem;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #4F46E5, #06B6D4);
+      transform: scaleX(0);
+      transform-origin: center;
+      transition: transform 0.24s ease;
+    }
+
+    .nav-link:hover::after {
+      transform: scaleX(1);
+    }
+
+    input,
+    select,
+    textarea {
+      transition: border-color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+    }
+
+    #mainSearch:focus {
+      box-shadow: none;
+    }
+
+    #languageMenu,
+    #themeMenu,
+    #authMenu {
+      box-shadow: 0 26px 60px -34px rgba(15, 23, 42, 0.55);
+      transform-origin: top right;
     }
 
     .mobile-menu {
@@ -132,6 +268,45 @@
     html[dir="rtl"] .fa-arrow-right,
     html[dir="rtl"] .fa-arrow-left {
       transform: rotate(180deg);
+    }
+
+    @media (max-width: 640px) {
+      h1 {
+        word-break: normal;
+        overflow-wrap: anywhere;
+      }
+
+      #page-home section:first-child {
+        padding-top: 2.5rem;
+      }
+
+      #mainSearch {
+        min-width: 0;
+      }
+
+      #searchButton {
+        padding-left: 1.1rem;
+        padding-right: 1.1rem;
+      }
+
+      .card-hover:hover,
+      .magnetic-hover:hover {
+        transform: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .reveal-ready {
+        opacity: 1;
+        transform: none;
+      }
     }
   </style>
 </head>
@@ -731,6 +906,80 @@ const API_URL = 'https://finblasti-backend-production.up.railway.app/api';
 
 // Tableau des spots (on va le remplir depuis l'API)
 let spots = [];
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function hasGSAP() {
+  return Boolean(window.gsap);
+}
+
+function decorateMotionTargets(scope = document) {
+  scope.querySelectorAll('button, .badge, .city-chip, .theme-option, .language-option').forEach(el => {
+    el.classList.add('magnetic-hover');
+  });
+
+  scope.querySelectorAll(
+    '.bg-white.dark\\:bg-slate-900, .dark\\:bg-slate-900, aside > div, form, #detailContent > div > div > div'
+  ).forEach(el => {
+    if (!el.closest('nav') && !el.classList.contains('card-hover')) {
+      el.classList.add('soft-panel');
+    }
+  });
+}
+
+function animatePageIn(page) {
+  if (!page || reduceMotion || !hasGSAP()) return;
+
+  gsap.fromTo(
+    page,
+    { autoAlpha: 0, y: 16 },
+    { autoAlpha: 1, y: 0, duration: 0.48, ease: 'power3.out', clearProps: 'opacity,visibility,transform' }
+  );
+
+  gsap.fromTo(
+    page.querySelectorAll('h1, h2, .quick-filter, .card-hover, aside, form, #rankingList > div, #reviewsList > div'),
+    { autoAlpha: 0, y: 18 },
+    { autoAlpha: 1, y: 0, duration: 0.5, stagger: 0.055, ease: 'power3.out', delay: 0.08, clearProps: 'opacity,visibility,transform' }
+  );
+}
+
+function refreshScrollReveals(scope = document) {
+  decorateMotionTargets(scope);
+  if (reduceMotion || !hasGSAP() || !window.ScrollTrigger) return;
+
+  gsap.registerPlugin(ScrollTrigger);
+  const targets = gsap.utils.toArray(scope.querySelectorAll('section, .card-hover, aside > div, #rankingList > div, #reviewsList > div'));
+
+  targets.forEach(el => {
+    if (el.dataset.revealBound) return;
+    el.dataset.revealBound = 'true';
+    el.classList.add('reveal-ready');
+
+    gsap.to(el, {
+      autoAlpha: 1,
+      y: 0,
+      duration: 0.65,
+      ease: 'power3.out',
+      scrollTrigger: {
+        trigger: el,
+        start: 'top 88%',
+        once: true
+      }
+    });
+  });
+}
+
+function animateDynamicList(container) {
+  if (!container) return;
+  refreshScrollReveals(container);
+  if (reduceMotion || !hasGSAP()) return;
+
+  gsap.fromTo(
+    container.children,
+    { autoAlpha: 0, y: 18, scale: 0.985 },
+    { autoAlpha: 1, y: 0, scale: 1, duration: 0.42, stagger: 0.045, ease: 'power3.out', clearProps: 'opacity,visibility,transform' }
+  );
+}
+
 function getConnectedUser() {
   try {
     return JSON.parse(localStorage.getItem('finblasti_user'));
@@ -886,6 +1135,8 @@ chargerSpotsDepuisAPI().then(() => {
   if (target) {
     target.classList.add('active');
     setTimeout(() => target.classList.add('fade-in'), 5);
+    animatePageIn(target);
+    refreshScrollReveals(target);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
     if (addToHistory) {
@@ -970,7 +1221,7 @@ document.addEventListener('keydown', (e) => {
             </div>
           </div>
 
-          <div class="${compact ? 'h-48' : 'h-56'} bg-slate-200 dark:bg-slate-800 overflow-hidden">
+          <div class="${compact ? 'h-48' : 'h-56'} image-slot bg-slate-200 dark:bg-slate-800 overflow-hidden">
             <img 
   src="${spot.image}" 
   alt="${spot.name}"
@@ -1021,6 +1272,7 @@ document.addEventListener('keydown', (e) => {
       const filtered = city === 'all' ? spots.slice(0, 3) : spots.filter(s => s.city === city);
       container.innerHTML = filtered.map(s => spotCard(s)).join('') || emptyState('Aucun spot trouvé pour cette ville.');
       attachDetailButtons();
+      animateDynamicList(container);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
 
@@ -1061,6 +1313,7 @@ document.addEventListener('keydown', (e) => {
       const container = document.getElementById('discoverCards');
       container.innerHTML = result.map(s => spotCard(s, true)).join('') || emptyState('Aucun résultat. Essaie de modifier les filtres.');
       attachDetailButtons();
+      animateDynamicList(container);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
 
@@ -1105,6 +1358,7 @@ document.addEventListener('keydown', (e) => {
         </div>
       `).join('');
       attachDetailButtons();
+      animateDynamicList(document.getElementById('rankingList'));
       if (typeof applyLanguage === 'function') applyLanguage();
     }
 
@@ -1127,6 +1381,7 @@ document.addEventListener('keydown', (e) => {
           </div>
         </div>
       `).join('');
+      animateDynamicList(document.getElementById('reviewsList'));
       if (typeof applyLanguage === 'function') applyLanguage();
     }
 
@@ -1140,12 +1395,14 @@ document.addEventListener('keydown', (e) => {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div class="lg:col-span-2">
             <div class="rounded-[2rem] overflow-hidden border border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+              <div class="image-slot">
               <img 
   src="${s.image}" 
   alt="${s.name}"
   data-full-image="${s.image}"
   class="spot-image-click w-full h-[360px] object-cover cursor-zoom-in"
 >
+              </div>
               <div class="p-6 md:p-8">
                 <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
                   <div>
@@ -1228,6 +1485,7 @@ document.addEventListener('keydown', (e) => {
 
       document.querySelector('#detailContent [data-route="discover"]').addEventListener('click', () => setRoute('discover'));
       document.getElementById('saveFavorite').addEventListener('click', () => showToast('Spot enregistré', `${s.name} a été ajouté à tes favoris.`));
+      refreshScrollReveals(document.getElementById('detailContent'));
       if (typeof applyLanguage === 'function') applyLanguage();
       setRoute('detail');
     }
@@ -2221,7 +2479,14 @@ setRoute('add');
     renderDiscover();
     renderRanking();
     renderReviews();
+    refreshScrollReveals();
+    animatePageIn(document.querySelector('.page.active'));
     applyLanguage(localStorage.getItem('finblasti-language') || 'fr');
+
+    window.addEventListener('load', () => {
+      refreshScrollReveals();
+      animatePageIn(document.querySelector('.page.active'));
+    });
   </script>
 </body>
 </html>
