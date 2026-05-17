@@ -257,19 +257,21 @@ async function chargerSpotsDepuisAPI() {
   } catch (error) {
     console.error('❌ Erreur lors du chargement:', error);
     showToast('Erreur API', error.message || 'Impossible de charger les spots.', 'error');
-    return [];
+    spots = [];
+    return spots;
   }
 }
 
 // Charger les spots au démarrage
 renderLoadingCards();
-Promise.all([chargerSpotsDepuisAPI(), chargerReviewsDepuisAPI(), FinBlasti.loadFavorites()]).then(() => {
+Promise.allSettled([chargerSpotsDepuisAPI(), chargerReviewsDepuisAPI(), FinBlasti.loadFavorites()]).then(() => {
   updateAuthUI();
   renderHomeCards();
   renderTrending();
   renderDiscover();
   renderRanking();
   renderReviews();
+}).finally(() => {
   hideAppLoader();
 });
 
@@ -623,7 +625,9 @@ document.addEventListener('keydown', (e) => {
       });
       const fromSpots = spots.flatMap(s => (s.reviewsText || []).map(r => ({ ...r, spot: s.name, city: s.city })));
       const reviews = fromApi.length ? fromApi : fromSpots;
-      document.getElementById('reviewsList').innerHTML = reviews.map((r, i) => `
+      const reviewsEl = document.getElementById('reviewsList');
+      if (!reviewsEl) return;
+      reviewsEl.innerHTML = reviews.length ? reviews.map((r, i) => `
         <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6">
           <div class="flex items-start gap-4">
             <img src="https://i.pravatar.cc/100?img=${i + 24}" class="w-12 h-12 rounded-full" alt="">
@@ -639,8 +643,8 @@ document.addEventListener('keydown', (e) => {
             </div>
           </div>
         </div>
-      `).join('');
-      animateDynamicList(document.getElementById('reviewsList'));
+      `).join('') : emptyState('Aucun avis disponible pour le moment.');
+      animateDynamicList(reviewsEl);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
 

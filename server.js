@@ -12,7 +12,26 @@ const { v2: cloudinary } = require('cloudinary');
 // ===== INITIALISATION =====
 const app = express();
 
-app.use(cors());
+const allowedOrigins = new Set([
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'https://othmanechouhbi.github.io'
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.has(origin)) {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 204
+}));
+app.options(/.*/, cors());
 app.use(express.json());
 app.use(express.static(__dirname));
 
@@ -171,6 +190,10 @@ app.get('/test', (req, res) => {
   res.json({
     message: '✅ Le serveur fonctionne !'
   });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true });
 });
 
 // ===== ROUTE : DEMANDER UN CODE DE CONNEXION =====
@@ -714,3 +737,4 @@ app.listen(PORT, () => {
 
   console.log(`- Auth code : http://localhost:${PORT}/api/auth/request-code`);
 });
+

@@ -38,8 +38,23 @@ FinBlasti.readJsonResponse = async (response) => {
 };
 
 FinBlasti.apiFetch = async (path, options = {}) => {
-  const response = await fetch(FinBlasti.apiUrl(path), options);
-  return FinBlasti.readJsonResponse(response);
+  const timeoutMs = options.timeoutMs || 12000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const fetchOptions = { ...options, signal: controller.signal };
+  delete fetchOptions.timeoutMs;
+
+  try {
+    const response = await fetch(FinBlasti.apiUrl(path), fetchOptions);
+    return FinBlasti.readJsonResponse(response);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('Le serveur met trop de temps a repondre. Reessaie dans un instant.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 };
 
 FinBlasti.authHeaders = (json = true) => {
