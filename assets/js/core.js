@@ -4,6 +4,8 @@ window.FinBlasti = window.FinBlasti || {};
 FinBlasti.TOP_SCORE_MIN = 7.5;
 FinBlasti.savedSpotIds = new Set();
 FinBlasti.commentsBySpot = {};
+FinBlasti.commentsLoadErrors = {};
+FinBlasti.favoritesLoadError = null;
 
 FinBlasti.getToken = () => localStorage.getItem('finblasti_token');
 

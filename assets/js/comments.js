@@ -5,9 +5,11 @@ FinBlasti.fetchComments = async function (spotId) {
   try {
     const data = await FinBlasti.apiFetch(`/reviews?spot_id=${encodeURIComponent(key)}`);
     FinBlasti.commentsBySpot[key] = Array.isArray(data) ? data : [];
+    delete FinBlasti.commentsLoadErrors[key];
     return FinBlasti.commentsBySpot[key];
   } catch (e) {
     console.warn('Commentaires indisponibles', e);
+    FinBlasti.commentsLoadErrors[key] = e.message || 'Impossible de charger les commentaires.';
     return FinBlasti.commentsBySpot[key] || [];
   }
 };
@@ -40,7 +42,7 @@ FinBlasti.commentsSectionHtml = function (spotId) {
       ${
         loggedIn
           ? `<form id="commentForm" class="space-y-3">
-        <textarea id="commentText" maxlength="500" rows="3" placeholder="Partage ton expérience (Wi-Fi, prises, ambiance)…" class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary text-base"></textarea>
+        <textarea id="commentText" maxlength="500" rows="3" placeholder="Partage ton expérience (Wi-Fi, prises, ambiance)..." class="w-full rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-4 py-3 outline-none focus:border-primary text-base"></textarea>
         <p class="text-xs text-slate-400">Max 500 caractères</p>
         <button type="submit" class="rounded-full bg-primary text-white px-6 py-3 font-bold hover:bg-primaryHover">Publier le commentaire</button>
       </form>`
@@ -51,11 +53,25 @@ FinBlasti.commentsSectionHtml = function (spotId) {
   `;
 };
 
+FinBlasti.commentsErrorHtml = function (spotId, message) {
+  return `
+    <div class="rounded-2xl border border-red-100 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 p-4">
+      <p class="text-sm font-bold text-red-700 dark:text-red-300">Commentaires indisponibles</p>
+      <p class="text-sm text-red-600 dark:text-red-200 mt-1">${FinBlasti.escapeHtml(message)}</p>
+      <button type="button" data-retry-comments="${spotId}" class="mt-3 rounded-full bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 px-4 py-2 text-sm font-bold text-red-700 dark:text-red-200">Réessayer</button>
+    </div>
+  `;
+};
+
 FinBlasti.bindCommentsSection = async function (spotId) {
   const list = document.getElementById('commentsList');
   if (!list) return;
+
   const comments = await FinBlasti.fetchComments(spotId);
-  list.innerHTML = FinBlasti.renderCommentsList(comments);
+  const commentsError = FinBlasti.commentsLoadErrors[String(spotId)];
+  list.innerHTML = commentsError && !comments.length
+    ? FinBlasti.commentsErrorHtml(spotId, commentsError)
+    : FinBlasti.renderCommentsList(comments);
 
   const form = document.getElementById('commentForm');
   if (!form) return;
@@ -84,7 +100,8 @@ FinBlasti.bindCommentsSection = async function (spotId) {
       showToast('Commentaire publié', 'Merci pour ton retour à la communauté.');
       const key = String(spotId);
       FinBlasti.commentsBySpot[key] = [data, ...(FinBlasti.commentsBySpot[key] || [])];
-      list.innerHTML = FinBlasti.renderCommentsList(FinBlasti.commentsBySpot[String(spotId)]);
+      delete FinBlasti.commentsLoadErrors[key];
+      list.innerHTML = FinBlasti.renderCommentsList(FinBlasti.commentsBySpot[key]);
       FinBlasti.forceVisible(list);
     } catch (err) {
       showToast('Erreur', err.message, 'error');
@@ -94,3 +111,10 @@ FinBlasti.bindCommentsSection = async function (spotId) {
     }
   });
 };
+
+document.addEventListener('click', (e) => {
+  const retry = e.target.closest('[data-retry-comments]');
+  if (!retry) return;
+  e.preventDefault();
+  FinBlasti.bindCommentsSection(retry.dataset.retryComments);
+});

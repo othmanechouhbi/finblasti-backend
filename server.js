@@ -46,6 +46,7 @@ cloudinary.config({
 
 // ===== CONFIGURATION BREVO =====
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const BREVO_TIMEOUT_MS = Number(process.env.BREVO_TIMEOUT_MS || 10000);
 const OTP_REQUEST_COOLDOWN_SECONDS = Number(process.env.OTP_REQUEST_COOLDOWN_SECONDS || 60);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
 const emailFromAddress = process.env.BREVO_SENDER_EMAIL || process.env.MAIL_FROM_EMAIL;
@@ -104,12 +105,45 @@ function maskEmail(email) {
   return `${name.slice(0, 2)}***@${domain}`;
 }
 
-function ensureBrevoConfigured() {
+function createServiceError(message, statusCode, publicMessage, code, provider) {
+  const err = new Error(message);
+  err.statusCode = statusCode;
+  err.publicMessage = publicMessage;
+  err.code = code;
+  err.provider = provider;
+  return err;
+}
+
+function getBrevoConfigError() {
   if (!process.env.BREVO_API_KEY) {
-    throw new Error('BREVO_API_KEY manquant');
+    return 'BREVO_API_KEY manquant';
   }
   if (!emailFromAddress || !isValidEmail(emailFromAddress)) {
-    throw new Error('BREVO_SENDER_EMAIL invalide');
+    return 'BREVO_SENDER_EMAIL invalide';
+  }
+  return null;
+}
+
+function getOtpConfigError({ needsJwt = false } = {}) {
+  if (!process.env.OTP_SECRET) {
+    return 'OTP_SECRET manquant';
+  }
+  if (needsJwt && !process.env.JWT_SECRET) {
+    return 'JWT_SECRET manquant';
+  }
+  return null;
+}
+
+function ensureBrevoConfigured() {
+  const configError = getBrevoConfigError();
+  if (configError) {
+    throw createServiceError(
+      configError,
+      503,
+      'Service email non configure. Reessaie plus tard.',
+      'BREVO_CONFIG',
+      'brevo'
+    );
   }
 }
 
@@ -134,15 +168,41 @@ async function sendOtpEmail(email, code) {
     textContent: `Ton code de connexion est ${code}. Il expire dans 10 minutes.`
   };
 
-  const response = await fetch(BREVO_API_URL, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      'api-key': process.env.BREVO_API_KEY,
-      'content-type': 'application/json'
-    },
-    body: JSON.stringify(payload)
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), BREVO_TIMEOUT_MS);
+  let response;
+
+  try {
+    response = await fetch(BREVO_API_URL, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw createServiceError(
+        'Brevo request timeout',
+        504,
+        'Service email temporairement indisponible. Reessaie plus tard.',
+        'BREVO_TIMEOUT',
+        'brevo'
+      );
+    }
+    throw createServiceError(
+      err.message || 'Brevo request failed',
+      502,
+      'Service email temporairement indisponible. Reessaie plus tard.',
+      'BREVO_SEND_FAILED',
+      'brevo'
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const responseText = await response.text();
   let responseBody = {};
@@ -156,10 +216,13 @@ async function sendOtpEmail(email, code) {
 
   if (!response.ok) {
     const providerMessage = responseBody.message || responseBody.raw || `Brevo HTTP ${response.status}`;
-    const err = new Error(providerMessage);
-    err.status = response.status;
-    err.provider = 'brevo';
-    throw err;
+    throw createServiceError(
+      providerMessage,
+      502,
+      'Service email temporairement indisponible. Reessaie plus tard.',
+      'BREVO_SEND_FAILED',
+      'brevo'
+    );
   }
 
   return responseBody;
@@ -204,6 +267,22 @@ app.post('/api/auth/request-code', async (req, res) => {
     if (!email || !isValidEmail(email)) {
       return res.status(400).json({
         error: 'Email invalide'
+      });
+    }
+
+    const otpConfigError = getOtpConfigError();
+    if (otpConfigError) {
+      console.error('Configuration OTP invalide:', otpConfigError);
+      return res.status(503).json({
+        error: 'Service de connexion temporairement indisponible'
+      });
+    }
+
+    const brevoConfigError = getBrevoConfigError();
+    if (brevoConfigError) {
+      console.error('Configuration Brevo invalide:', brevoConfigError);
+      return res.status(503).json({
+        error: 'Service email non configure. Reessaie plus tard.'
       });
     }
 
@@ -258,13 +337,13 @@ app.post('/api/auth/request-code', async (req, res) => {
     console.error('Erreur request-code:', {
       message: err.message,
       provider: err.provider,
-      status: err.status
+      status: err.statusCode || err.status
     });
 
-    const status = err.message?.startsWith('BREVO_') ? 503 : 500;
+    const status = err.statusCode || err.status || 500;
 
     res.status(status).json({
-      error: 'Erreur lors de l envoi du code'
+      error: err.publicMessage || 'Erreur lors de l envoi du code'
     });
   }
 });
@@ -279,6 +358,14 @@ app.post('/api/auth/verify-code', async (req, res) => {
     if (!email || !isValidEmail(email) || !code) {
       return res.status(400).json({
         error: 'Email et code requis'
+      });
+    }
+
+    const otpConfigError = getOtpConfigError({ needsJwt: true });
+    if (otpConfigError) {
+      console.error('Configuration OTP invalide:', otpConfigError);
+      return res.status(503).json({
+        error: 'Service de connexion temporairement indisponible'
       });
     }
 
@@ -704,6 +791,12 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
       error: 'Erreur ajout avis'
     });
   }
+});
+
+app.use('/api', (req, res) => {
+  res.status(404).json({
+    error: 'Route API introuvable'
+  });
 });
 
 // ===== GESTION ERREURS UPLOAD =====

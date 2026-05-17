@@ -4,6 +4,8 @@ let apiReviews = [];
 
 // Tableau des spots (on va le remplir depuis l'API)
 let spots = [];
+let apiLoadError = null;
+let apiLoading = false;
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function hasGSAP() {
@@ -185,6 +187,18 @@ function renderLoadingCards() {
   if (discover) discover.innerHTML = skeleton;
 }
 
+function apiErrorState(message) {
+  return `
+    <div class="col-span-full rounded-3xl border border-red-100 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 p-6 text-center">
+      <p class="font-extrabold text-red-700 dark:text-red-200">API indisponible</p>
+      <p class="text-sm text-red-600 dark:text-red-100 mt-2">${FinBlasti.escapeHtml(message || 'Impossible de joindre le serveur FinBlasti.')}</p>
+      <button type="button" data-retry-api class="mt-4 rounded-full bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 px-5 py-2.5 text-sm font-bold text-red-700 dark:text-red-100">
+        Réessayer
+      </button>
+    </div>
+  `;
+}
+
 async function chargerReviewsDepuisAPI() {
   try {
     const data = await FinBlasti.apiFetch('/reviews');
@@ -222,6 +236,7 @@ async function chargerSpotsDepuisAPI() {
     if (Array.isArray(donnees) && donnees.length > 0) {
       console.log('✅ ' + donnees.length + ' spots chargés depuis l\'API');
       spots = donnees.map((s) => FinBlasti.normalizeSpot({ ...s, id: s.id || s._id }));
+      apiLoadError = null;
     } else {
       console.log('⚠️ Aucun spot trouvé, utilisation des données d\'exemple');
       // Données d'exemple si la BD est vide
@@ -251,28 +266,67 @@ async function chargerSpotsDepuisAPI() {
           ]
         })
       ];
+      apiLoadError = null;
     }
     
     return spots;
   } catch (error) {
     console.error('❌ Erreur lors du chargement:', error);
-    showToast('Erreur API', error.message || 'Impossible de charger les spots.', 'error');
+    apiLoadError = error.message || 'Impossible de charger les spots.';
     spots = [];
     return spots;
   }
 }
 
-// Charger les spots au démarrage
-renderLoadingCards();
-Promise.allSettled([chargerSpotsDepuisAPI(), chargerReviewsDepuisAPI(), FinBlasti.loadFavorites()]).then(() => {
-  updateAuthUI();
-  renderHomeCards();
-  renderTrending();
-  renderDiscover();
-  renderRanking();
-  renderReviews();
-}).finally(() => {
-  hideAppLoader();
+async function refreshAppData({ showLoading = true } = {}) {
+  if (apiLoading) return;
+  apiLoading = true;
+  try {
+    if (showLoading) renderLoadingCards();
+
+    await Promise.allSettled([
+      chargerSpotsDepuisAPI(),
+      chargerReviewsDepuisAPI(),
+      FinBlasti.loadFavorites()
+    ]);
+
+    updateAuthUI();
+    renderHomeCards();
+    renderTrending();
+    renderDiscover();
+    renderRanking();
+    renderReviews();
+    renderSaved();
+  } finally {
+    apiLoading = false;
+    hideAppLoader();
+  }
+}
+
+// Charger les spots au démarrage, avec une sortie de secours pour éviter un splash infini.
+const loaderFallback = window.setTimeout(hideAppLoader, 8000);
+refreshAppData()
+  .catch((err) => {
+    console.error('Erreur chargement initial:', err);
+    apiLoadError = err.message || 'Impossible de charger les données.';
+    renderHomeCards();
+    renderTrending();
+    renderDiscover();
+    renderRanking();
+    renderReviews();
+    renderSaved();
+  })
+  .finally(() => {
+    window.clearTimeout(loaderFallback);
+    apiLoading = false;
+    hideAppLoader();
+  });
+
+document.addEventListener('click', (e) => {
+  const retry = e.target.closest('[data-retry-api]');
+  if (!retry) return;
+  e.preventDefault();
+  refreshAppData();
 });
 
     const pages = document.querySelectorAll('.page');
@@ -482,6 +536,11 @@ document.addEventListener('keydown', (e) => {
         grid.innerHTML = emptyState('Connecte-toi pour voir tes spots enregistrés.');
         return;
       }
+      if (FinBlasti.favoritesLoadError) {
+        grid.innerHTML = apiErrorState(FinBlasti.favoritesLoadError);
+        FinBlasti.forceVisible(grid);
+        return;
+      }
       const saved = spots.filter((s) => FinBlasti.isSaved(s.id));
       grid.innerHTML = saved.length
         ? saved.map((s) => spotCard(s, true)).join('')
@@ -495,6 +554,11 @@ document.addEventListener('keydown', (e) => {
     function renderTrending() {
       const rail = document.getElementById('trendingRail');
       if (!rail) return;
+      if (apiLoadError && !spots.length) {
+        rail.innerHTML = apiErrorState(apiLoadError);
+        FinBlasti.forceVisible(rail);
+        return;
+      }
       const trending = [...spots].sort((a, b) => Number(b.score) - Number(a.score)).slice(0, 8);
       rail.innerHTML = trending.map(s => spotCard(s, true)).join('') || emptyState('Aucun spot tendance pour le moment.');
       refreshSaveButtons(rail);
@@ -504,6 +568,11 @@ document.addEventListener('keydown', (e) => {
 
     function renderHomeCards(city = 'all') {
       const container = document.getElementById('homeCards');
+      if (apiLoadError && !spots.length) {
+        container.innerHTML = apiErrorState(apiLoadError);
+        FinBlasti.forceVisible(container);
+        return;
+      }
       const filtered = city === 'all' ? spots.slice(0, 3) : spots.filter(s => s.city === city);
       container.innerHTML = filtered.map(s => spotCard(s)).join('') || emptyState('Aucun spot trouvé pour cette ville.');
       attachDetailButtons();
@@ -551,6 +620,12 @@ document.addEventListener('keydown', (e) => {
 
       const container = document.getElementById('discoverCards');
       const countEl = document.getElementById('discoverCount');
+      if (apiLoadError && !spots.length) {
+        if (countEl) countEl.textContent = 'API indisponible - impossible de charger les spots.';
+        container.innerHTML = apiErrorState(apiLoadError);
+        FinBlasti.forceVisible(container);
+        return;
+      }
       if (countEl) {
         countEl.textContent = result.length
           ? `${result.length} spot${result.length > 1 ? 's' : ''} trouvé${result.length > 1 ? 's' : ''}`
@@ -586,6 +661,11 @@ document.addEventListener('keydown', (e) => {
     function renderRanking() {
       const topSpots = FinBlasti.getTopSpots(spots);
       const el = document.getElementById('rankingList');
+      if (apiLoadError && !spots.length) {
+        el.innerHTML = apiErrorState(apiLoadError);
+        FinBlasti.forceVisible(el);
+        return;
+      }
       if (!topSpots.length) {
         el.innerHTML = emptyState('Aucun top spot pour le moment. Découvre tous les lieux disponibles.');
         FinBlasti.forceVisible(el);
@@ -627,6 +707,11 @@ document.addEventListener('keydown', (e) => {
       const reviews = fromApi.length ? fromApi : fromSpots;
       const reviewsEl = document.getElementById('reviewsList');
       if (!reviewsEl) return;
+      if (apiLoadError && !spots.length && !reviews.length) {
+        reviewsEl.innerHTML = apiErrorState(apiLoadError);
+        FinBlasti.forceVisible(reviewsEl);
+        return;
+      }
       reviewsEl.innerHTML = reviews.length ? reviews.map((r, i) => `
         <div class="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-3xl p-6">
           <div class="flex items-start gap-4">
