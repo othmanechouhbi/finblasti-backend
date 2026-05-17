@@ -7,6 +7,37 @@ FinBlasti.commentsBySpot = {};
 
 FinBlasti.getToken = () => localStorage.getItem('finblasti_token');
 
+FinBlasti.apiUrl = (path) => {
+  const base = (window.API_BASE_URL || '').replace(/\/$/, '');
+  const cleanPath = String(path || '').startsWith('/') ? path : `/${path}`;
+  return `${base}/api${cleanPath}`;
+};
+
+FinBlasti.readJsonResponse = async (response) => {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (!contentType.includes('application/json')) {
+    const preview = await response.text().catch(() => '');
+    const isHtml = /<!doctype|<html/i.test(preview);
+    throw new Error(
+      isHtml
+        ? 'Le serveur a renvoye une page HTML au lieu de JSON. Verifie l URL API de production.'
+        : 'Reponse API invalide. Recharge la page ou reessaie dans un instant.'
+    );
+  }
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.error || `Erreur API (${response.status})`);
+  }
+  return data;
+};
+
+FinBlasti.apiFetch = async (path, options = {}) => {
+  const response = await fetch(FinBlasti.apiUrl(path), options);
+  return FinBlasti.readJsonResponse(response);
+};
+
 FinBlasti.authHeaders = (json = true) => {
   const headers = {};
   const token = FinBlasti.getToken();

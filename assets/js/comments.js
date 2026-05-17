@@ -3,9 +3,7 @@
 FinBlasti.fetchComments = async function (spotId) {
   const key = String(spotId);
   try {
-    const res = await fetch(`${API_URL}/comments?spot_id=${encodeURIComponent(key)}`);
-    if (!res.ok) return [];
-    const data = await res.json();
+    const data = await FinBlasti.apiFetch(`/comments?spot_id=${encodeURIComponent(key)}`);
     FinBlasti.commentsBySpot[key] = Array.isArray(data) ? data : [];
     return FinBlasti.commentsBySpot[key];
   } catch (e) {
@@ -38,7 +36,7 @@ FinBlasti.commentsSectionHtml = function (spotId) {
   return `
     <section class="mt-10" id="commentsSection" data-spot-id="${spotId}">
       <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-4">Commentaires</h2>
-      <div id="commentsList" class="space-y-3 mb-6">Chargement…</div>
+      <div id="commentsList" class="space-y-3 mb-6" aria-live="polite">Chargement...</div>
       ${
         loggedIn
           ? `<form id="commentForm" class="space-y-3">
@@ -73,21 +71,26 @@ FinBlasti.bindCommentsSection = async function (spotId) {
       showToast('Trop long', 'Le commentaire doit faire 500 caractères maximum.', 'error');
       return;
     }
+    const submit = form.querySelector('button[type="submit"]');
+    submit.disabled = true;
+    submit.textContent = 'Publication...';
     try {
-      const res = await fetch(`${API_URL}/comments`, {
+      const data = await FinBlasti.apiFetch('/comments', {
         method: 'POST',
         headers: FinBlasti.authHeaders(),
         body: JSON.stringify({ spot_id: spotId, text })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Erreur publication');
       document.getElementById('commentText').value = '';
       showToast('Commentaire publié', 'Merci pour ton retour à la communauté.');
-      await FinBlasti.fetchComments(spotId);
+      const key = String(spotId);
+      FinBlasti.commentsBySpot[key] = [data, ...(FinBlasti.commentsBySpot[key] || [])];
       list.innerHTML = FinBlasti.renderCommentsList(FinBlasti.commentsBySpot[String(spotId)]);
       FinBlasti.forceVisible(list);
     } catch (err) {
       showToast('Erreur', err.message, 'error');
+    } finally {
+      submit.disabled = false;
+      submit.textContent = 'Publier le commentaire';
     }
   });
 };

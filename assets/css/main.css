@@ -656,16 +656,19 @@ body {
 /* Morocco map decoration */
 .morocco-map-bg {
   position: absolute;
-  inset: -10% -5% auto auto;
-  width: min(55vw, 420px);
+  inset: -8% -4% auto auto;
+  width: min(58vw, 520px);
   height: auto;
-  opacity: 0.14;
+  opacity: 0.34;
   pointer-events: none;
   z-index: 0;
+  color: #5b4cff;
+  mix-blend-mode: multiply;
 }
 
 .dark .morocco-map-bg {
-  opacity: 0.22;
+  opacity: 0.42;
+  mix-blend-mode: screen;
 }
 
 .morocco-map-svg {
@@ -675,25 +678,46 @@ body {
 
 .morocco-outline {
   stroke: #5b4cff;
-  stroke-width: 1.5;
-  fill: rgba(91, 76, 255, 0.06);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: rgba(91, 76, 255, 0.035);
+}
+
+.morocco-dot-field {
+  fill: url(#moroccoDots);
+  opacity: 0.82;
 }
 
 .morocco-route {
   stroke: #00c2a8;
-  stroke-width: 1.2;
-  stroke-dasharray: 6 8;
+  stroke-width: 1.4;
+  stroke-dasharray: 3 9;
+  stroke-linecap: round;
   fill: none;
-  opacity: 0.7;
+  opacity: 0.78;
+}
+
+.route-two {
+  opacity: 0.42;
 }
 
 .map-dot {
   fill: #5b4cff;
-  opacity: 0.85;
+  opacity: 0.92;
+}
+
+.map-dot.accent {
+  fill: #00c2a8;
+}
+
+.city-casa {
+  fill: #ff6b4a;
 }
 
 .dark .morocco-outline {
-  fill: rgba(91, 76, 255, 0.12);
+  fill: rgba(91, 76, 255, 0.08);
+  stroke: #a5b4fc;
 }
 
 /* Theme toggle */
@@ -753,8 +777,14 @@ body {
 
 @media (max-width: 640px) {
   .morocco-map-bg {
-    width: 70vw;
-    right: -15%;
-    opacity: 0.1;
+    width: 82vw;
+    right: -28%;
+    top: 0;
+    opacity: 0.18;
+  }
+
+  .morocco-route,
+  .route-two {
+    opacity: 0.28;
   }
 }

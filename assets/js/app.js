@@ -1,4 +1,5 @@
-﻿const API_URL = window.FINBLASTI_API_URL || 'https://finblasti-backend-production.up.railway.app/api';
+﻿const API_BASE_URL = window.API_BASE_URL || 'https://finblasti-backend-production.up.railway.app';
+const API_URL = `${API_BASE_URL.replace(/\/$/, '')}/api`;
 let apiReviews = [];
 
 // Tableau des spots (on va le remplir depuis l'API)
@@ -186,9 +187,7 @@ function renderLoadingCards() {
 
 async function chargerReviewsDepuisAPI() {
   try {
-    const response = await fetch(API_URL + '/reviews');
-    if (!response.ok) return [];
-    const data = await response.json();
+    const data = await FinBlasti.apiFetch('/reviews');
     apiReviews = Array.isArray(data) ? data : [];
     return apiReviews;
   } catch (err) {
@@ -218,10 +217,9 @@ function hideAppLoader() {
 async function chargerSpotsDepuisAPI() {
   try {
     console.log('📡 Chargement des spots depuis l\'API...');
-    const response = await fetch(API_URL + '/spots');
-    const donnees = await response.json();
+    const donnees = await FinBlasti.apiFetch('/spots');
     
-    if (donnees.length > 0) {
+    if (Array.isArray(donnees) && donnees.length > 0) {
       console.log('✅ ' + donnees.length + ' spots chargés depuis l\'API');
       spots = donnees.map((s) => FinBlasti.normalizeSpot({ ...s, id: s.id || s._id }));
     } else {
@@ -258,7 +256,7 @@ async function chargerSpotsDepuisAPI() {
     return spots;
   } catch (error) {
     console.error('❌ Erreur lors du chargement:', error);
-    alert('Erreur: Impossible de se connecter au serveur en ligne.');
+    showToast('Erreur API', error.message || 'Impossible de charger les spots.', 'error');
     return [];
   }
 }
@@ -468,6 +466,12 @@ document.addEventListener('keydown', (e) => {
       // kept for backwards compat - delegation handles everything
     }
 
+    function refreshSaveButtons(root = document) {
+      root.querySelectorAll('[data-save-spot]').forEach((btn) => {
+        FinBlasti.updateSaveButton(btn, btn.dataset.saveSpot);
+      });
+    }
+
     
     function renderSaved() {
       const grid = document.getElementById('savedCards');
@@ -482,7 +486,7 @@ document.addEventListener('keydown', (e) => {
         : emptyState('Tu n\'as pas encore enregistré de spot. Utilise l\'icône signet sur une carte.');
       FinBlasti.forceVisible(grid);
       animateDynamicList(grid);
-      grid.querySelectorAll('[data-save-spot]').forEach((btn) => FinBlasti.updateSaveButton(btn, btn.dataset.saveSpot));
+      refreshSaveButtons(grid);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
 
@@ -491,6 +495,7 @@ document.addEventListener('keydown', (e) => {
       if (!rail) return;
       const trending = [...spots].sort((a, b) => Number(b.score) - Number(a.score)).slice(0, 8);
       rail.innerHTML = trending.map(s => spotCard(s, true)).join('') || emptyState('Aucun spot tendance pour le moment.');
+      refreshSaveButtons(rail);
       animateDynamicList(rail);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
@@ -500,6 +505,7 @@ document.addEventListener('keydown', (e) => {
       const filtered = city === 'all' ? spots.slice(0, 3) : spots.filter(s => s.city === city);
       container.innerHTML = filtered.map(s => spotCard(s)).join('') || emptyState('Aucun spot trouvé pour cette ville.');
       attachDetailButtons();
+      refreshSaveButtons(container);
       animateDynamicList(container);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
@@ -550,7 +556,7 @@ document.addEventListener('keydown', (e) => {
       }
       container.innerHTML = result.map(s => spotCard(s, true)).join('') || emptyState('Aucun résultat. Essaie « Réinitialiser / Tout afficher ».');
       attachDetailButtons();
-      container.querySelectorAll('[data-save-spot]').forEach((btn) => FinBlasti.updateSaveButton(btn, btn.dataset.saveSpot));
+      refreshSaveButtons(container);
       animateDynamicList(container);
       if (typeof applyLanguage === 'function') applyLanguage();
     }
@@ -597,8 +603,8 @@ document.addEventListener('keydown', (e) => {
             <button data-detail="${s.id}" class="detail-btn rounded-full bg-primary text-white px-5 py-2.5 font-bold">Voir</button>
           </div>
         </div>
-      `).join('').replace(/<\/?motion>/g, (m) => (m.startsWith('</') ? '</div>' : '<div'));
-      el.querySelectorAll('[data-save-spot]').forEach((btn) => FinBlasti.updateSaveButton(btn, btn.dataset.saveSpot));
+      `).join('');
+      refreshSaveButtons(el);
       FinBlasti.forceVisible(el);
       animateDynamicList(el);
       if (typeof applyLanguage === 'function') applyLanguage();
@@ -880,7 +886,7 @@ if (
       const formData = new FormData(e.target);
 
       try {
-        const response = await fetch(API_URL + '/spots', {
+        const result = await FinBlasti.apiFetch('/spots', {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${token}`
@@ -888,9 +894,7 @@ if (
           body: formData
         });
 
-        const result = await response.json();
-
-        if (response.ok) {
+        if (result) {
           showToast('Spot ajouté !', 'Votre proposition avec photo a été sauvegardée.');
           e.target.reset();
 
@@ -904,17 +908,17 @@ if (
           renderReviews();
 
           setRoute('discover');
-        } else if (response.status === 401) {
-          localStorage.removeItem('finblasti_token');
-          localStorage.removeItem('finblasti_user');
-          showToast('Session expirée', 'Reconnecte-toi pour ajouter un spot.');
-          setRoute('login');
-        } else {
-          showToast('❌ Erreur', result.error || 'Impossible d’ajouter le spot');
         }
       } catch (error) {
         console.error('Erreur:', error);
-        showToast('❌ Erreur', 'Erreur: ' + error.message);
+        if (String(error.message || '').includes('401') || String(error.message || '').includes('Session')) {
+          localStorage.removeItem('finblasti_token');
+          localStorage.removeItem('finblasti_user');
+          showToast('Session expirée', 'Reconnecte-toi pour ajouter un spot.', 'error');
+          setRoute('login');
+        } else {
+          showToast('Erreur', error.message || 'Impossible d’ajouter le spot', 'error');
+        }
       }
     });
 
@@ -927,20 +931,14 @@ if (
       }
 
       try {
-        const response = await fetch(API_URL + '/auth/request-code', {
+        await FinBlasti.apiFetch('/auth/request-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
 
-        const result = await response.json();
-
-        if (response.ok) {
-          document.getElementById('codeBox').classList.remove('hidden');
-          showToast('Code envoyé', 'Vérifie ton email et entre le code reçu.');
-        } else {
-          showToast('❌ Erreur', result.error || 'Impossible d’envoyer le code');
-        }
+        document.getElementById('codeBox').classList.remove('hidden');
+        showToast('Code envoyé', 'Vérifie ton email et entre le code reçu.');
       } catch (error) {
         showToast('Erreur', error.message, 'error');
       }
@@ -957,16 +955,14 @@ if (
       }
 
       try {
-        const response = await fetch(API_URL + '/auth/verify-code', {
+        const result = await FinBlasti.apiFetch('/auth/verify-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name, email, code })
         });
 
-        const result = await response.json();
-
-        if (response.ok) {
-          localStorage.setItem('finblasti_token', result.token);
+        if (result?.token) {
+localStorage.setItem('finblasti_token', result.token);
 localStorage.setItem('finblasti_user', JSON.stringify(result.user));
 
 updateAuthUI();
@@ -974,8 +970,6 @@ await FinBlasti.loadFavorites();
 
 showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
 setRoute('add');
-        } else {
-         showToast('Code incorrect', 'Vérifie le code reçu par email.', 'error');
         }
       } catch (error) {
         showToast('Erreur', error.message, 'error');
@@ -1767,3 +1761,5 @@ setRoute('add');
       refreshScrollReveals();
       animatePageIn(document.querySelector('.page.active'));
     });
+
+

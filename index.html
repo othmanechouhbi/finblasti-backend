@@ -165,11 +165,38 @@
       <!-- Hero Section -->
       <section class="hero-grid relative px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto py-8 md:py-14 grid grid-cols-1 lg:grid-cols-[1.02fr_0.98fr] gap-8 lg:gap-12 items-center overflow-hidden">
         <div class="morocco-map-bg" aria-hidden="true">
-          <svg class="morocco-map-svg" viewBox="0 0 360 420" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path class="morocco-outline" d="M48 118 L92 88 L148 72 L210 68 L278 82 L318 118 L332 168 L328 228 L302 288 L248 332 L178 348 L108 328 L62 278 L42 218 L38 158 Z"/>
-            <path class="morocco-route" d="M72 200 Q120 160 168 178 T248 192 T298 248"/>
-            <circle class="map-dot" cx="92" cy="198" r="4"/><circle class="map-dot" cx="118" cy="168" r="4"/><circle class="map-dot" cx="148" cy="175" r="4"/>
-            <circle class="map-dot" cx="168" cy="248" r="4"/><circle class="map-dot" cx="198" cy="142" r="4"/><circle class="map-dot" cx="248" cy="128" r="4"/><circle class="map-dot" cx="128" cy="298" r="4"/>
+          <svg class="morocco-map-svg" viewBox="0 0 420 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="moroccoGlow" cx="50%" cy="50%" r="70%">
+                <stop offset="0%" stop-color="#5b4cff" stop-opacity="0.22"/>
+                <stop offset="55%" stop-color="#00c2a8" stop-opacity="0.09"/>
+                <stop offset="100%" stop-color="#5b4cff" stop-opacity="0"/>
+              </radialGradient>
+              <pattern id="moroccoDots" width="18" height="18" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1.15" fill="currentColor" opacity="0.18"/>
+              </pattern>
+              <filter id="cityGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <ellipse cx="214" cy="242" rx="172" ry="214" fill="url(#moroccoGlow)"/>
+            <path class="morocco-outline" d="M267 50 C237 62 207 85 178 116 C153 143 129 174 108 207 C91 235 72 263 70 296 C68 326 88 350 112 366 C141 385 173 397 203 418 C229 437 253 461 285 455 C312 450 319 418 315 389 C311 357 321 331 348 303 C379 271 372 226 344 200 C325 182 323 160 329 135 C337 102 315 61 267 50 Z"/>
+            <path class="morocco-dot-field" d="M267 50 C237 62 207 85 178 116 C153 143 129 174 108 207 C91 235 72 263 70 296 C68 326 88 350 112 366 C141 385 173 397 203 418 C229 437 253 461 285 455 C312 450 319 418 315 389 C311 357 321 331 348 303 C379 271 372 226 344 200 C325 182 323 160 329 135 C337 102 315 61 267 50 Z"/>
+            <path class="morocco-route" d="M238 151 C222 171 205 181 190 196 C171 214 149 237 135 265 C160 257 190 249 217 252 C252 256 273 282 292 315"/>
+            <path class="morocco-route route-two" d="M190 196 C218 205 245 205 276 190 C291 183 305 174 321 166"/>
+            <g filter="url(#cityGlow)">
+              <circle class="map-dot city-casa" cx="190" cy="196" r="5"><title>Casablanca</title></circle>
+              <circle class="map-dot" cx="238" cy="151" r="4"><title>Rabat</title></circle>
+              <circle class="map-dot" cx="210" cy="180" r="3.5"><title>Mohammedia</title></circle>
+              <circle class="map-dot accent" cx="135" cy="265" r="4"><title>Marrakech</title></circle>
+              <circle class="map-dot accent" cx="276" cy="190" r="4"><title>Fes</title></circle>
+              <circle class="map-dot" cx="321" cy="166" r="4"><title>Tanger</title></circle>
+              <circle class="map-dot accent" cx="292" cy="315" r="4"><title>Agadir</title></circle>
+            </g>
           </svg>
         </div>
         <div class="relative z-[1]">
@@ -468,7 +495,7 @@
             </div>
 
             <p id="discoverCount" class="mb-4" aria-live="polite"></p>
-            <motion id="discoverCards"
+            <div id="discoverCards" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
           </div>
         </div>
       </div>

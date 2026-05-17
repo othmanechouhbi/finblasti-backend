@@ -7,11 +7,9 @@ FinBlasti.loadFavorites = async function () {
     return;
   }
   try {
-    const res = await fetch(`${API_URL}/favorites`, {
+    const rows = await FinBlasti.apiFetch('/favorites', {
       headers: FinBlasti.authHeaders(false)
     });
-    if (!res.ok) throw new Error('favorites');
-    const rows = await res.json();
     FinBlasti.savedSpotIds = new Set(rows.map((r) => String(r.spot_id)));
   } catch (e) {
     console.warn('Favoris non chargés', e);
@@ -30,22 +28,23 @@ FinBlasti.toggleFavorite = async function (spotId) {
   }
   const id = String(spotId);
   const saved = FinBlasti.isSaved(id);
+  const buttons = Array.from(document.querySelectorAll(`[data-save-spot="${id}"]`));
+  buttons.forEach((btn) => {
+    btn.disabled = true;
+    btn.classList.add('opacity-70');
+  });
   try {
-    const res = await fetch(
-      saved ? `${API_URL}/favorites/${id}` : `${API_URL}/favorites`,
+    await FinBlasti.apiFetch(
+      saved ? `/favorites/${id}` : '/favorites',
       {
         method: saved ? 'DELETE' : 'POST',
         headers: FinBlasti.authHeaders(),
         body: saved ? undefined : JSON.stringify({ spot_id: id })
       }
     );
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'Erreur favoris');
     if (saved) FinBlasti.savedSpotIds.delete(id);
     else FinBlasti.savedSpotIds.add(id);
-    document.querySelectorAll(`[data-save-spot="${id}"]`).forEach((btn) => {
-      FinBlasti.updateSaveButton(btn, id);
-    });
+    buttons.forEach((btn) => FinBlasti.updateSaveButton(btn, id));
     showToast(
       saved ? 'Retiré des favoris' : 'Spot enregistré',
       saved ? 'Ce spot a été retiré de ta liste.' : 'Tu le retrouveras dans Spots enregistrés.'
@@ -55,6 +54,11 @@ FinBlasti.toggleFavorite = async function (spotId) {
   } catch (e) {
     showToast('Erreur', e.message || 'Impossible de modifier les favoris.', 'error');
     return saved;
+  } finally {
+    buttons.forEach((btn) => {
+      btn.disabled = false;
+      btn.classList.remove('opacity-70');
+    });
   }
 };
 
