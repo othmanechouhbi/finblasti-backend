@@ -8,7 +8,6 @@ const multer = require('multer');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v2: cloudinary } = require('cloudinary');
-const { Resend } = require('resend');
 
 // ===== INITIALISATION =====
 const app = express();
@@ -26,8 +25,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// ===== CONFIGURATION RESEND =====
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ===== CONFIGURATION BREVO =====
+const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
+const OTP_REQUEST_COOLDOWN_SECONDS = Number(process.env.OTP_REQUEST_COOLDOWN_SECONDS || 60);
+const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
+const emailFromAddress = process.env.BREVO_SENDER_EMAIL || process.env.MAIL_FROM_EMAIL;
+const emailFromName = process.env.BREVO_SENDER_NAME || process.env.MAIL_FROM_NAME || 'FinBlasti';
 
 // ===== CONFIGURATION UPLOAD PHOTO =====
 const upload = multer({
@@ -72,6 +75,77 @@ function hashCode(code) {
     .digest('hex');
 }
 
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function maskEmail(email) {
+  const [name, domain] = String(email || '').split('@');
+  if (!name || !domain) return 'unknown';
+  return `${name.slice(0, 2)}***@${domain}`;
+}
+
+function ensureBrevoConfigured() {
+  if (!process.env.BREVO_API_KEY) {
+    throw new Error('BREVO_API_KEY manquant');
+  }
+  if (!emailFromAddress || !isValidEmail(emailFromAddress)) {
+    throw new Error('BREVO_SENDER_EMAIL invalide');
+  }
+}
+
+async function sendOtpEmail(email, code) {
+  ensureBrevoConfigured();
+
+  const payload = {
+    sender: {
+      name: emailFromName,
+      email: emailFromAddress
+    },
+    to: [{ email }],
+    subject: 'Ton code de connexion',
+    htmlContent: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+        <h2 style="margin: 0 0 12px;">Connexion</h2>
+        <p>Voici ton code de verification :</p>
+        <p style="font-size: 32px; font-weight: 800; letter-spacing: 6px; margin: 18px 0;">${code}</p>
+        <p>Ce code expire dans 10 minutes. Ignore cet email si tu n'as pas demande de connexion.</p>
+      </div>
+    `,
+    textContent: `Ton code de connexion est ${code}. Il expire dans 10 minutes.`
+  };
+
+  const response = await fetch(BREVO_API_URL, {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'api-key': process.env.BREVO_API_KEY,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify(payload)
+  });
+
+  const responseText = await response.text();
+  let responseBody = {};
+  if (responseText) {
+    try {
+      responseBody = JSON.parse(responseText);
+    } catch {
+      responseBody = { raw: responseText.slice(0, 500) };
+    }
+  }
+
+  if (!response.ok) {
+    const providerMessage = responseBody.message || responseBody.raw || `Brevo HTTP ${response.status}`;
+    const err = new Error(providerMessage);
+    err.status = response.status;
+    err.provider = 'brevo';
+    throw err;
+  }
+
+  return responseBody;
+}
+
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
@@ -104,9 +178,28 @@ app.post('/api/auth/request-code', async (req, res) => {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
 
-    if (!email || !email.includes('@')) {
+    if (!email || !isValidEmail(email)) {
       return res.status(400).json({
         error: 'Email invalide'
+      });
+    }
+
+    const recentRequest = await pool.query(
+      `
+      SELECT id, created_at
+      FROM auth_codes
+      WHERE email = $1
+      AND used = false
+      AND created_at > NOW() - ($2::int * INTERVAL '1 second')
+      ORDER BY created_at DESC
+      LIMIT 1
+      `,
+      [email, OTP_REQUEST_COOLDOWN_SECONDS]
+    );
+
+    if (recentRequest.rows.length > 0) {
+      return res.status(429).json({
+        error: `Attends ${OTP_REQUEST_COOLDOWN_SECONDS} secondes avant de demander un nouveau code.`
       });
     }
 
@@ -130,31 +223,25 @@ app.post('/api/auth/request-code', async (req, res) => {
       [email, codeHash]
     );
 
-    await resend.emails.send({
-      from: 'FinBlasti <onboarding@resend.dev>',
-      to: email,
-      subject: 'Ton code de connexion FinBlasti',
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Connexion FinBlasti</h2>
-          <p>Voici ton code de vérification :</p>
-          <h1 style="letter-spacing: 4px;">${code}</h1>
-          <p>Ce code expire dans 10 minutes.</p>
-        </div>
-      `
-    });
+    const brevoResult = await sendOtpEmail(email, code);
 
-    console.log(`✅ Code envoyé à ${email}`);
+    console.log(`OTP envoye via Brevo a ${maskEmail(email)} messageId=${brevoResult.messageId || 'n/a'}`);
 
     res.json({
-      message: 'Code envoyé par email'
+      message: 'Code envoye par email'
     });
 
   } catch (err) {
-    console.error('❌ Erreur request-code:', err);
+    console.error('Erreur request-code:', {
+      message: err.message,
+      provider: err.provider,
+      status: err.status
+    });
 
-    res.status(500).json({
-      error: 'Erreur lors de l’envoi du code'
+    const status = err.message?.startsWith('BREVO_') ? 503 : 500;
+
+    res.status(status).json({
+      error: 'Erreur lors de l envoi du code'
     });
   }
 });
@@ -166,7 +253,7 @@ app.post('/api/auth/verify-code', async (req, res) => {
     const code = String(req.body.code || '').trim();
     const name = String(req.body.name || '').trim();
 
-    if (!email || !code) {
+    if (!email || !isValidEmail(email) || !code) {
       return res.status(400).json({
         error: 'Email et code requis'
       });
@@ -192,6 +279,12 @@ app.post('/api/auth/verify-code', async (req, res) => {
     }
 
     const savedCode = codeResult.rows[0];
+
+    if (Number(savedCode.attempts || 0) >= OTP_MAX_ATTEMPTS) {
+      return res.status(429).json({
+        error: 'Trop de tentatives. Demande un nouveau code.'
+      });
+    }
 
     if (savedCode.code_hash !== hashCode(code)) {
       await pool.query(
