@@ -299,15 +299,27 @@ async function getUserById(userId) {
 function reviewSelectSql(whereClause = '') {
   return `
     SELECT
-      r.*,
-      COALESCE(NULLIF(u.name, ''), NULLIF(r.user_name, ''), NULLIF(r.author_name, ''), 'Utilisateur') AS user_name,
-      COALESCE(NULLIF(r.author_name, ''), NULLIF(r.user_name, '')) AS author_name,
-      u.name AS profile_name
+      r.id,
+      r.spot_id,
+      r.text,
+      r.rating,
+      r.user_id,
+      COALESCE(NULLIF(u.name, ''), NULLIF(r.user_name, ''), 'Utilisateur') AS user_name,
+      r.created_at
     FROM reviews r
     LEFT JOIN users u ON CAST(u.id AS TEXT) = CAST(r.user_id AS TEXT)
     ${whereClause}
     ORDER BY r.created_at DESC NULLS LAST, r.id DESC
   `;
+}
+
+async function getCurrentReviewUser(authUser) {
+  const user = await getUserById(authUser.userId);
+  return user || {
+    id: authUser.userId,
+    email: authUser.email,
+    name: authUser.email?.split('@')[0] || 'Utilisateur'
+  };
 }
 
 // ===== ROUTE TEST =====
@@ -848,21 +860,15 @@ app.post('/api/comments', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Commentaire trop long (500 max)' });
     }
 
-    const userResult = await pool.query(
-      'SELECT name, email FROM users WHERE id = $1 LIMIT 1',
-      [req.user.userId]
-    );
-    const user = userResult.rows[0] || {
-      name: req.user.email?.split('@')[0] || 'Utilisateur',
-      email: req.user.email
-    };
+    const user = await getCurrentReviewUser(req.user);
 
-    const result = await pool.query(
-      `INSERT INTO reviews (spot_id, user_id, user_name, author_name, text, rating)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING *`,
-      [spotId, req.user.userId, user.name, user.name, text, 5]
+    const insertResult = await pool.query(
+      `INSERT INTO reviews (spot_id, user_id, user_name, text, rating)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id`,
+      [spotId, req.user.userId, user.name, text, 5]
     );
+    const result = await pool.query(reviewSelectSql('WHERE r.id = $1'), [insertResult.rows[0].id]);
 
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -890,32 +896,25 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
   }
 
   try {
-    const userResult = await pool.query(
-      'SELECT name, email FROM users WHERE id = $1 LIMIT 1',
-      [req.user.userId]
-    );
-    const user = userResult.rows[0] || {
-      name: req.user.email?.split('@')[0] || 'Utilisateur',
-      email: req.user.email
-    };
+    const user = await getCurrentReviewUser(req.user);
 
-    const result = await pool.query(
+    const insertResult = await pool.query(
       `
       INSERT INTO reviews
       (
         spot_id,
         user_id,
         user_name,
-        author_name,
         text,
         rating
       )
       VALUES
-      ($1,$2,$3,$4,$5,$6)
-      RETURNING *
+      ($1,$2,$3,$4,$5)
+      RETURNING id
       `,
-      [spot_id, req.user.userId, user.name, user.name, text, Math.min(5, Math.max(1, rating))]
+      [spot_id, req.user.userId, user.name, text, Math.min(5, Math.max(1, rating))]
     );
+    const result = await pool.query(reviewSelectSql('WHERE r.id = $1'), [insertResult.rows[0].id]);
 
     res.status(201).json(result.rows[0]);
 

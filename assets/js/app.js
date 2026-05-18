@@ -432,6 +432,12 @@ document.addEventListener('click', (e) => {
     const pages = document.querySelectorAll('.page');
     const routeButtons = document.querySelectorAll('[data-route]');
     const mobileMenu = document.getElementById('mobileMenu');
+    let redirectAfterLogin = window.location.hash.replace('#', '') || 'home';
+
+    function getCurrentRoute() {
+      const activePage = document.querySelector('.page.active');
+      return activePage?.id?.replace('page-', '') || window.location.hash.replace('#', '') || 'home';
+    }
 
     function updateActiveNavigation(route) {
       document.querySelectorAll('.mobile-nav-item').forEach(btn => {
@@ -440,10 +446,13 @@ document.addEventListener('click', (e) => {
     }
 
     function setRoute(route, addToHistory = true) {
-        if (route === 'add' && !FinBlasti.getToken()) {
-    showToast('Connexion requise', 'Tu dois te connecter avant d’ajouter un spot.');
-    route = 'login';
-  }
+      if (route === 'add' && !FinBlasti.getToken()) {
+        redirectAfterLogin = 'add';
+        showToast('Connexion requise', 'Tu dois te connecter avant d’ajouter un spot.');
+        route = 'login';
+      } else if (route === 'login') {
+        redirectAfterLogin = getCurrentRoute();
+      }
   pages.forEach(page => page.classList.remove('active', 'fade-in'));
 
   const target = document.getElementById(`page-${route}`);
@@ -843,12 +852,12 @@ document.addEventListener('keydown', (e) => {
             <div class="flex-1">
               <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <div>
-                  <p class="font-extrabold text-slate-900 dark:text-white">${r.user}</p>
-                  <p class="text-sm text-slate-500 dark:text-slate-400">${r.spot} · ${r.city}</p>
+                  <p class="font-extrabold text-slate-900 dark:text-white">${FinBlasti.escapeHtml(r.user)}</p>
+                  <p class="text-sm text-slate-500 dark:text-slate-400">${FinBlasti.escapeHtml(r.spot)} · ${FinBlasti.escapeHtml(r.city)}</p>
                 </div>
                 <div>${renderStars(r.rating)}</div>
               </div>
-              <p class="text-slate-600 dark:text-slate-300 mt-4 leading-relaxed">${r.text}</p>
+              <p class="text-slate-600 dark:text-slate-300 mt-4 leading-relaxed">${FinBlasti.escapeHtml(r.text)}</p>
             </div>
           </div>
         </div>
@@ -1091,6 +1100,7 @@ if (
       const token = FinBlasti.getToken();
 
       if (!token) {
+        redirectAfterLogin = 'add';
         showToast('Connexion requise', 'Connecte-toi avant d’ajouter un spot.');
         setRoute('login');
         return;
@@ -1135,7 +1145,7 @@ if (
     });
 
     let pendingAuthResult = null;
-    let pendingAuthRoute = 'add';
+    let pendingAuthRoute = null;
 
     function setLoginFlow(flow) {
       const nameField = document.getElementById('loginNameField');
@@ -1157,9 +1167,9 @@ if (
       }
     }
 
-    function openRememberModal(result, nextRoute = 'add') {
+    function openRememberModal(result, nextRoute = null) {
       pendingAuthResult = result;
-      pendingAuthRoute = nextRoute;
+      pendingAuthRoute = nextRoute || redirectAfterLogin || 'home';
       document.getElementById('rememberDeviceModal')?.classList.add('open');
     }
 
@@ -1172,9 +1182,13 @@ if (
       updateAuthUI();
       await FinBlasti.loadFavorites();
 
+      const nextRoute = pendingAuthRoute || redirectAfterLogin || 'home';
+      pendingAuthRoute = null;
+      redirectAfterLogin = 'home';
+
       document.getElementById('rememberDeviceModal')?.classList.remove('open');
       showToast('Connexion réussie', remember ? 'Tu resteras connecté sur cet appareil.' : 'Session active pour cet onglet.');
-      setRoute(pendingAuthRoute || 'home');
+      setRoute(nextRoute);
     }
 
     document.getElementById('rememberYesBtn')?.addEventListener('click', () => finishAuth(true));
@@ -1226,7 +1240,7 @@ if (
         });
 
         if (result?.token) {
-          openRememberModal(result, 'add');
+          openRememberModal(result);
         }
       } catch (error) {
         showToast('Erreur', error.message, 'error');
