@@ -341,6 +341,12 @@ app.get('/test', (req, res) => {
   });
 });
 
+app.get('/api/test', (req, res) => {
+  res.json({
+    message: 'Le serveur API fonctionne !'
+  });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
 });
@@ -603,7 +609,7 @@ app.get('/api/auth/me', requireAuth, async (req, res) => {
   }
 });
 
-app.put('/api/users/me/name', requireAuth, async (req, res) => {
+async function updateMyName(req, res) {
   try {
     const name = String(req.body.name || '').trim();
 
@@ -636,7 +642,10 @@ app.put('/api/users/me/name', requireAuth, async (req, res) => {
     console.error('Erreur users/me/name:', err);
     res.status(500).json({ error: 'Erreur serveur' });
   }
-});
+}
+
+app.put('/api/users/me/name', requireAuth, updateMyName);
+app.put('/api/user/me/name', requireAuth, updateMyName);
 
 // ===== ROUTE : TOUS LES SPOTS =====
 app.get('/api/spots', async (req, res) => {
