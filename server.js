@@ -43,6 +43,7 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 console.log('🚀 Démarrage du serveur...');
+console.log("🔥 FINBLASTI SERVER VERSION: 2026-05-18-FIX-API-TEST");
 
 // ===== CONFIGURATION CLOUDINARY =====
 cloudinary.config({
@@ -343,9 +344,14 @@ app.get('/test', (req, res) => {
 
 app.get('/api/test', (req, res) => {
   res.json({
-    message: 'Le serveur API fonctionne !'
+    ok: true,
+    message: 'API TEST OK',
+    version: '2026-05-18-FIX-API-TEST',
+    file: 'server.js',
+    time: new Date().toISOString()
   });
 });
+
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
