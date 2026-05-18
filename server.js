@@ -8,6 +8,13 @@ const multer = require('multer');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v2: cloudinary } = require('cloudinary');
+let SibApiV3Sdk = null;
+
+try {
+  SibApiV3Sdk = require('sib-api-v3-sdk');
+} catch (err) {
+  console.error('Brevo SDK indisponible. Le serveur continue sans email transactionnel:', err.message);
+}
 
 // ===== INITIALISATION =====
 const app = express();
@@ -45,20 +52,15 @@ cloudinary.config({
 });
 
 // ===== CONFIGURATION BREVO =====
-const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
 const BREVO_TIMEOUT_MS = 8000;
 const OTP_REQUEST_COOLDOWN_SECONDS = Number(process.env.OTP_REQUEST_COOLDOWN_SECONDS || 60);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
-const emailFromAddress = process.env.BREVO_SENDER_EMAIL || process.env.MAIL_FROM_EMAIL;
+const emailFromAddress = process.env.BREVO_SENDER_EMAIL || process.env.MAIL_FROM_EMAIL || 'noreply@finblasti.com';
 const emailFromName = process.env.BREVO_SENDER_NAME || process.env.MAIL_FROM_NAME || 'FinBlasti';
+let brevoTransactionalApi = null;
 
 try {
-  const brevoStartupConfigError = getBrevoConfigError();
-  if (brevoStartupConfigError) {
-    console.warn('Configuration Brevo invalide au demarrage:', brevoStartupConfigError);
-  } else {
-    console.log('Configuration Brevo chargee.');
-  }
+  configureBrevoClient();
 } catch (err) {
   console.error('Erreur initialisation Brevo ignoree:', err.message);
 }
@@ -126,6 +128,9 @@ function createServiceError(message, statusCode, publicMessage, code, provider) 
 }
 
 function getBrevoConfigError() {
+  if (!SibApiV3Sdk) {
+    return 'SDK Brevo indisponible';
+  }
   if (!process.env.BREVO_API_KEY) {
     return 'BREVO_API_KEY manquant';
   }
@@ -133,6 +138,27 @@ function getBrevoConfigError() {
     return 'BREVO_SENDER_EMAIL invalide';
   }
   return null;
+}
+
+function configureBrevoClient() {
+  const configError = getBrevoConfigError();
+  if (configError) {
+    console.warn('Configuration Brevo invalide au demarrage:', configError);
+    return null;
+  }
+
+  try {
+    const defaultClient = SibApiV3Sdk.ApiClient.instance;
+    const apiKey = defaultClient.authentications['api-key'];
+    apiKey.apiKey = process.env.BREVO_API_KEY;
+    brevoTransactionalApi = new SibApiV3Sdk.TransactionalEmailsApi();
+    console.log('Configuration Brevo transactionnelle chargee.');
+    return brevoTransactionalApi;
+  } catch (err) {
+    console.error('Erreur configuration Brevo transactionnelle:', err.message);
+    brevoTransactionalApi = null;
+    return null;
+  }
 }
 
 function getOtpConfigError({ needsJwt = false } = {}) {
@@ -160,83 +186,70 @@ function ensureBrevoConfigured() {
 
 async function sendOtpEmail(email, code) {
   ensureBrevoConfigured();
+  const apiInstance = brevoTransactionalApi || configureBrevoClient();
+  if (!apiInstance) {
+    throw createServiceError(
+      'Brevo TransactionalEmailsApi indisponible',
+      503,
+      'Service email temporairement indisponible. Reessaie plus tard.',
+      'BREVO_CLIENT',
+      'brevo'
+    );
+  }
 
-  const payload = {
-    sender: {
-      name: emailFromName,
-      email: emailFromAddress
-    },
-    to: [{ email }],
-    subject: 'Ton code de connexion',
-    htmlContent: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
-        <h2 style="margin: 0 0 12px;">Connexion</h2>
-        <p>Voici ton code de verification :</p>
-        <p style="font-size: 32px; font-weight: 800; letter-spacing: 6px; margin: 18px 0;">${code}</p>
-        <p>Ce code expire dans 10 minutes. Ignore cet email si tu n'as pas demande de connexion.</p>
-      </div>
-    `,
-    textContent: `Ton code de connexion est ${code}. Il expire dans 10 minutes.`
+  const sendSmtpEmail = new SibApiV3Sdk.SendSmtpEmail();
+  sendSmtpEmail.subject = 'Votre code de connexion';
+  sendSmtpEmail.htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+      <h2 style="margin: 0 0 12px;">Connexion</h2>
+      <p>Votre code de connexion :</p>
+      <p style="font-size: 32px; font-weight: 800; letter-spacing: 6px; margin: 18px 0;">${code}</p>
+      <p>Ce code expire dans 10 minutes. Ignore cet email si tu n'as pas demande de connexion.</p>
+    </div>
+  `;
+  sendSmtpEmail.textContent = `Votre code de connexion est ${code}. Il expire dans 10 minutes.`;
+  sendSmtpEmail.sender = {
+    name: emailFromName,
+    email: emailFromAddress
   };
+  sendSmtpEmail.to = [{ email }];
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), BREVO_TIMEOUT_MS);
-  let response;
+  let timeout;
 
   try {
-    response = await fetch(BREVO_API_URL, {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify(payload),
-      signal: controller.signal
+    const timeoutPromise = new Promise((_, reject) => {
+      timeout = setTimeout(() => {
+        reject(createServiceError(
+          'Brevo transactional request timeout',
+          504,
+          'Service email temporairement indisponible. Reessaie plus tard.',
+          'BREVO_TIMEOUT',
+          'brevo'
+        ));
+      }, BREVO_TIMEOUT_MS);
     });
+
+    return await Promise.race([
+      apiInstance.sendTransacEmail(sendSmtpEmail),
+      timeoutPromise
+    ]);
   } catch (err) {
-    if (err.name === 'AbortError') {
-      throw createServiceError(
-        'Brevo request timeout',
-        504,
-        'Service email temporairement indisponible. Reessaie plus tard.',
-        'BREVO_TIMEOUT',
-        'brevo'
-      );
+    if (err.provider === 'brevo') {
+      throw err;
     }
+
+    const providerMessage = err?.response?.body?.message || err?.message || 'Brevo transactional request failed';
+    console.error('Brevo transactional error:', providerMessage);
     throw createServiceError(
-      err.message || 'Brevo request failed',
+      providerMessage,
       502,
-      'Service email temporairement indisponible. Reessaie plus tard.',
+      'Impossible d envoyer le code pour le moment. Verifie la configuration Brevo puis reessaie.',
       'BREVO_SEND_FAILED',
       'brevo'
     );
   } finally {
     clearTimeout(timeout);
   }
-
-  const responseText = await response.text();
-  let responseBody = {};
-  if (responseText) {
-    try {
-      responseBody = JSON.parse(responseText);
-    } catch {
-      responseBody = { raw: responseText.slice(0, 500) };
-    }
-  }
-
-  if (!response.ok) {
-    const providerMessage = responseBody.message || responseBody.raw || `Brevo HTTP ${response.status}`;
-    throw createServiceError(
-      providerMessage,
-      502,
-      'Service email temporairement indisponible. Reessaie plus tard.',
-      'BREVO_SEND_FAILED',
-      'brevo'
-    );
-  }
-
-  return responseBody;
 }
 
 function requireAuth(req, res, next) {
