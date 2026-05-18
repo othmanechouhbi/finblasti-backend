@@ -446,6 +446,7 @@ document.addEventListener('click', (e) => {
   const image = e.target.closest('.spot-image-click');
 
   if (!image) return;
+  if (image.closest('[data-spot-card], [data-ranking-spot]')) return;
 
   const viewer = document.getElementById('imageViewer');
   const viewerImage = document.getElementById('viewerImage');
@@ -478,7 +479,7 @@ document.addEventListener('keydown', (e) => {
     function spotCard(spot, compact = false) {
       const reviewCount = spot.reviewCount ?? spot.reviews ?? 0;
       return `
-        <article class="spot-card spot-card-premium card-hover relative group">
+        <article class="spot-card spot-card-premium card-hover relative group" data-spot-card="${spot.id}">
           <div class="absolute top-4 left-4 z-10">${FinBlasti.saveButtonHtml(spot.id)}</div>
           <div class="absolute top-4 right-4 z-10">
             <div class="${spot.score >= 9.5 ? 'finscore-gradient' : 'bg-slate-900 dark:bg-white dark:text-slate-900'} text-white font-bold text-lg px-3 py-1 rounded-xl shadow-lg flex items-center gap-1">
@@ -520,7 +521,7 @@ document.addEventListener('keydown', (e) => {
               <div class="flex items-center gap-2">
                 <span class="text-sm text-slate-500 dark:text-slate-400"><i class="fa-solid fa-comment-dots mr-1"></i>${reviewCount} avis</span>
               </div>
-              <button data-detail="${spot.id}" class="detail-btn text-primary font-semibold text-sm hover:underline">Détails</button><button type="button" data-comment-spot="${spot.id}" class="ml-2 text-xs font-bold text-slate-500 hover:text-primary">Commenter</button>
+              <button type="button" data-detail="${spot.id}" class="detail-btn text-primary font-semibold text-sm hover:underline">Détails</button><button type="button" data-comment-spot="${spot.id}" class="ml-2 text-xs font-bold text-slate-500 hover:text-primary">Commenter</button>
             </div>
           </div>
         </article>
@@ -539,11 +540,26 @@ document.addEventListener('keydown', (e) => {
       const commentBtn = e.target.closest('[data-comment-spot]');
       if (commentBtn) {
         e.preventDefault();
+        e.stopPropagation();
         openDetail(commentBtn.dataset.commentSpot);
         return;
       }
       const btn = e.target.closest('.detail-btn');
-      if (btn && btn.dataset.detail) openDetail(btn.dataset.detail);
+      if (btn && btn.dataset.detail) {
+        e.preventDefault();
+        e.stopPropagation();
+        openDetail(btn.dataset.detail);
+        return;
+      }
+      const spotCard = e.target.closest('[data-spot-card]');
+      if (spotCard) {
+        openDetail(spotCard.dataset.spotCard);
+        return;
+      }
+      const rankingItem = e.target.closest('[data-ranking-spot]');
+      if (rankingItem) {
+        openDetail(rankingItem.dataset.rankingSpot);
+      }
     });
 
     function attachDetailButtons() {
@@ -700,7 +716,7 @@ document.addEventListener('keydown', (e) => {
         return;
       }
       el.innerHTML = topSpots.map((s, index) => `
-        <div class="flex flex-col md:flex-row md:items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors card-hover">
+        <div class="ranking-item flex flex-col md:flex-row md:items-center gap-4 p-5 border-b border-slate-100 dark:border-slate-800 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-950 transition-colors card-hover" data-ranking-spot="${s.id}">
           <div class="w-12 h-12 rounded-2xl ${index < 3 ? 'finscore-gradient text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200'} flex items-center justify-center font-extrabold text-lg">#${index + 1}</div>
           <img src="${s.image}" alt="${s.name}" class="w-full md:w-28 h-24 rounded-2xl object-cover">
           <div class="flex-1">
@@ -710,7 +726,7 @@ document.addEventListener('keydown', (e) => {
           <div class="flex items-center gap-3 flex-wrap">
             <div class="text-center"><p class="text-2xl font-extrabold">${s.score}</p><p class="text-xs text-slate-400">FinScore</p></div>
             ${FinBlasti.saveButtonHtml(s.id)}
-            <button data-detail="${s.id}" class="detail-btn rounded-full bg-primary text-white px-5 py-2.5 font-bold">Voir</button>
+            <button type="button" data-detail="${s.id}" class="detail-btn rounded-full bg-primary text-white px-5 py-2.5 font-bold">Voir</button>
           </div>
         </div>
       `).join('');

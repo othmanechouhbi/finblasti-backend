@@ -56,6 +56,19 @@
       box-shadow: var(--lift-shadow);
     }
 
+    .spot-card,
+    .ranking-item {
+      cursor: pointer;
+    }
+
+    .ranking-item:hover {
+      background: rgba(248, 250, 252, 0.82);
+    }
+
+    .dark .ranking-item:hover {
+      background: rgba(15, 23, 42, 0.78);
+    }
+
     .fade-in {
       animation: fadeIn 0.45s ease-out forwards;
     }
