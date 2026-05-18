@@ -101,7 +101,7 @@ function animateDynamicList(container) {
 }
 
 function getConnectedUser() {
-  return FinBlasti.getStoredUser();
+  return FinBlasti.currentUser || FinBlasti.getStoredUser();
 }
 
 function updateAuthUI() {
@@ -179,16 +179,17 @@ document.getElementById('logoutBtn')?.addEventListener('click', () => {
   logoutUser();
 });
 
-function refreshVisibleUserContent() {
+async function refreshVisibleUserContent() {
   updateAuthUI();
   const section = document.getElementById('commentsSection');
   const spotId = section?.dataset?.spotId;
   if (spotId) {
     delete FinBlasti.commentsBySpot[String(spotId)];
-    FinBlasti.bindCommentsSection(spotId);
+    await FinBlasti.bindCommentsSection(spotId);
   }
   if (document.getElementById('page-community')?.classList.contains('active')) {
-    chargerReviewsDepuisAPI().then(renderReviews).catch(() => renderReviews());
+    await chargerReviewsDepuisAPI().catch(() => []);
+    renderReviews();
   }
 }
 
@@ -244,10 +245,15 @@ document.getElementById('profileNameForm')?.addEventListener('submit', async (e)
       name: result.user?.name || newName
     };
 
+    console.log('API updated user', updatedUser);
     FinBlasti.updateStoredUser(updatedUser);
+    const currentUserAfterUpdate = getConnectedUser();
+    console.log('currentUser after update', currentUserAfterUpdate);
+    console.log('stored local user', localStorage.getItem('finblasti_user'));
+    console.log('stored session user', sessionStorage.getItem('finblasti_user'));
     Object.keys(FinBlasti.commentsBySpot).forEach((key) => delete FinBlasti.commentsBySpot[key]);
     closeNameModal();
-    refreshVisibleUserContent();
+    await refreshVisibleUserContent();
     showToast('Nom modifié', 'Ton nouveau nom est affiché partout.');
   } catch (err) {
     showToast('Erreur', err.message, 'error');
@@ -342,6 +348,7 @@ async function chargerReviewsDepuisAPI() {
   try {
     const data = await FinBlasti.apiFetch('/reviews');
     apiReviews = Array.isArray(data) ? data : [];
+    console.log('reviews fetched', apiReviews);
     return apiReviews;
   } catch (err) {
     console.warn('Avis API indisponibles:', err);

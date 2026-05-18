@@ -7,15 +7,23 @@ FinBlasti.commentsBySpot = {};
 FinBlasti.commentsLoadErrors = {};
 FinBlasti.favoritesLoadError = null;
 
-FinBlasti.getStorageForToken = () =>
-  localStorage.getItem('finblasti_token') ? localStorage : sessionStorage;
+FinBlasti.currentUser = null;
+
+FinBlasti.getStorageForToken = () => {
+  if (localStorage.getItem('finblasti_token')) return localStorage;
+  if (sessionStorage.getItem('finblasti_token')) return sessionStorage;
+  return localStorage.getItem('finblasti_user') ? localStorage : sessionStorage;
+};
 
 FinBlasti.getToken = () =>
   localStorage.getItem('finblasti_token') || sessionStorage.getItem('finblasti_token');
 
 FinBlasti.getStoredUser = () => {
   try {
-    return JSON.parse(localStorage.getItem('finblasti_user') || sessionStorage.getItem('finblasti_user') || 'null');
+    const storage = FinBlasti.getStorageForToken();
+    const user = JSON.parse(storage.getItem('finblasti_user') || 'null');
+    FinBlasti.currentUser = user;
+    return user;
   } catch {
     return null;
   }
@@ -30,11 +38,18 @@ FinBlasti.storeSession = (token, user, remember = false) => {
   const storage = remember ? localStorage : sessionStorage;
   storage.setItem('finblasti_token', token);
   storage.setItem('finblasti_user', JSON.stringify(user));
+  FinBlasti.currentUser = user;
 };
 
 FinBlasti.updateStoredUser = (user) => {
   const storage = FinBlasti.getStorageForToken();
   storage.setItem('finblasti_user', JSON.stringify(user));
+  if (storage === localStorage) {
+    sessionStorage.removeItem('finblasti_user');
+  } else {
+    localStorage.removeItem('finblasti_user');
+  }
+  FinBlasti.currentUser = user;
 };
 
 FinBlasti.clearSession = () => {
@@ -42,6 +57,7 @@ FinBlasti.clearSession = () => {
   localStorage.removeItem('finblasti_user');
   sessionStorage.removeItem('finblasti_token');
   sessionStorage.removeItem('finblasti_user');
+  FinBlasti.currentUser = null;
 };
 
 FinBlasti.apiUrl = (path) => {

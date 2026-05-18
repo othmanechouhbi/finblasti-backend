@@ -5,6 +5,7 @@ FinBlasti.fetchComments = async function (spotId) {
   try {
     const data = await FinBlasti.apiFetch(`/reviews?spot_id=${encodeURIComponent(key)}`);
     FinBlasti.commentsBySpot[key] = Array.isArray(data) ? data : [];
+    console.log('reviews fetched', FinBlasti.commentsBySpot[key]);
     delete FinBlasti.commentsLoadErrors[key];
     return FinBlasti.commentsBySpot[key];
   } catch (e) {

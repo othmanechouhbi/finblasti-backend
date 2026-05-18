@@ -629,7 +629,7 @@ app.put('/api/users/me/name', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
 
-    console.log('updated user', user);
+    console.log('updated DB user', user);
 
     res.json({ user });
   } catch (err) {
@@ -774,10 +774,12 @@ app.get('/api/reviews', async (req, res) => {
 
     if (spotId) {
       const result = await pool.query(reviewSelectSql('WHERE r.spot_id = $1'), [spotId]);
+      console.log('reviews with joined users', result.rows);
       return res.json(result.rows);
     }
 
     const result = await pool.query(reviewSelectSql());
+    console.log('reviews with joined users', result.rows);
 
     res.json(result.rows);
 
@@ -883,7 +885,7 @@ app.post('/api/comments', requireAuth, async (req, res) => {
        RETURNING id`,
       [spotId, req.user.id, user.name, text, 5]
     );
-    console.log('insert review user_id', req.user?.id);
+    console.log('review insert user_id', req.user.id);
     const result = await pool.query(reviewSelectSql('WHERE r.id = $1'), [insertResult.rows[0].id]);
 
     res.status(201).json(result.rows[0]);
@@ -930,7 +932,7 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
       `,
       [spot_id, req.user.id, user.name, text, Math.min(5, Math.max(1, rating))]
     );
-    console.log('insert review user_id', req.user?.id);
+    console.log('review insert user_id', req.user.id);
     const result = await pool.query(reviewSelectSql('WHERE r.id = $1'), [insertResult.rows[0].id]);
 
     res.status(201).json(result.rows[0]);
