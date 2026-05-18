@@ -108,16 +108,20 @@ function updateAuthUI() {
   const user = getConnectedUser();
   const authButton = document.getElementById('authButton');
   const mobileAuthButton = document.getElementById('mobileAuthButton');
+  const userName = user?.name || 'Utilisateur';
 
   if (user && user.name) {
     if (authButton) {
-      authButton.innerHTML = `<i class="fa-solid fa-user-check mr-1"></i> ${FinBlasti.escapeHtml(user.name)}`;
+      authButton.innerHTML = `<i class="fa-solid fa-user-check mr-1"></i> <span class="current-user-name">${FinBlasti.escapeHtml(userName)}</span>`;
       authButton.dataset.route = 'profile';
     }
     if (mobileAuthButton) {
-      mobileAuthButton.innerHTML = `<i class="fa-solid fa-user-check mr-2"></i>${FinBlasti.escapeHtml(user.name)}`;
+      mobileAuthButton.innerHTML = `<i class="fa-solid fa-user-check mr-2"></i><span class="current-user-name">${FinBlasti.escapeHtml(userName)}</span>`;
       mobileAuthButton.dataset.route = 'profile';
     }
+    document.querySelectorAll('.current-user-name').forEach((el) => {
+      el.textContent = userName;
+    });
   } else {
     if (authButton) {
       authButton.innerHTML = 'Connexion';
@@ -127,6 +131,9 @@ function updateAuthUI() {
       mobileAuthButton.innerHTML = 'Connexion';
       mobileAuthButton.dataset.route = 'login';
     }
+    document.querySelectorAll('.current-user-name').forEach((el) => {
+      el.textContent = 'Utilisateur';
+    });
   }
 }
 
@@ -220,13 +227,24 @@ document.getElementById('profileNameForm')?.addEventListener('submit', async (e)
   submit.textContent = 'Enregistrement...';
 
   try {
+    const currentUser = getConnectedUser();
+    const token = FinBlasti.getToken();
+    console.log('currentUser before name update', currentUser);
+    console.log('token exists', !!token);
+
     const result = await FinBlasti.apiFetch('/users/me/name', {
       method: 'PUT',
       headers: FinBlasti.authHeaders(),
       body: JSON.stringify({ name: newName })
     });
 
-    FinBlasti.updateStoredUser(result.user);
+    const updatedUser = {
+      ...(currentUser || {}),
+      ...(result.user || {}),
+      name: result.user?.name || newName
+    };
+
+    FinBlasti.updateStoredUser(updatedUser);
     Object.keys(FinBlasti.commentsBySpot).forEach((key) => delete FinBlasti.commentsBySpot[key]);
     closeNameModal();
     refreshVisibleUserContent();

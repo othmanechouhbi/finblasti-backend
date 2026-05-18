@@ -14,6 +14,8 @@ FinBlasti.fetchComments = async function (spotId) {
   }
 };
 
+FinBlasti.loadReviews = FinBlasti.fetchComments;
+
 FinBlasti.renderCommentsList = function (comments) {
   if (!comments.length) {
     return `<p class="text-sm text-slate-500 dark:text-slate-400 py-4">Aucun commentaire pour l'instant. Sois le premier à partager ton expérience.</p>`;
@@ -75,10 +77,21 @@ FinBlasti.bindCommentsSection = async function (spotId) {
 
   const form = document.getElementById('commentForm');
   if (!form) return;
+  if (form.dataset.commentsBound === 'true') return;
+  form.dataset.commentsBound = 'true';
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const text = document.getElementById('commentText')?.value?.trim() || '';
+    const token = FinBlasti.getToken();
+    const payload = { spot_id: spotId, text, rating: 5 };
+    console.log('token exists', !!token);
+    console.log('review payload sent', payload);
+
+    if (!token) {
+      showToast('Connexion requise', 'Connecte-toi pour publier un commentaire.', 'error');
+      return;
+    }
     if (!text) {
       showToast('Commentaire vide', 'Écris quelque chose avant de publier.', 'error');
       return;
@@ -94,13 +107,14 @@ FinBlasti.bindCommentsSection = async function (spotId) {
       const data = await FinBlasti.apiFetch('/reviews', {
         method: 'POST',
         headers: FinBlasti.authHeaders(),
-        body: JSON.stringify({ spot_id: spotId, text, rating: 5 })
+        body: JSON.stringify(payload)
       });
       document.getElementById('commentText').value = '';
       showToast('Commentaire publié', 'Merci pour ton retour à la communauté.');
       const key = String(spotId);
-      FinBlasti.commentsBySpot[key] = [data, ...(FinBlasti.commentsBySpot[key] || [])];
+      delete FinBlasti.commentsBySpot[key];
       delete FinBlasti.commentsLoadErrors[key];
+      FinBlasti.commentsBySpot[key] = await FinBlasti.fetchComments(spotId);
       list.innerHTML = FinBlasti.renderCommentsList(FinBlasti.commentsBySpot[key]);
       FinBlasti.forceVisible(list);
     } catch (err) {

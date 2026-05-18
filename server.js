@@ -263,7 +263,17 @@ function requireAuth(req, res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded.id = decoded.id || decoded.userId;
+    decoded.userId = decoded.userId || decoded.id;
+
+    if (!decoded.id) {
+      return res.status(401).json({
+        error: 'Session invalide'
+      });
+    }
+
+    req.user = decoded;
     next();
   } catch (err) {
     return res.status(401).json({
@@ -278,6 +288,7 @@ function cleanUser(row) {
     id: row.id,
     email: row.email,
     name: row.name || String(row.email || '').split('@')[0] || 'Utilisateur',
+    verified: Boolean(row.verified),
     created_at: row.created_at || null,
     updated_at: row.updated_at || null
   };
@@ -286,7 +297,7 @@ function cleanUser(row) {
 async function getUserById(userId) {
   const result = await pool.query(
     `
-    SELECT id, email, name, created_at, updated_at
+    SELECT id, email, name, verified, created_at, updated_at
     FROM users
     WHERE id = $1
     LIMIT 1
@@ -314,9 +325,10 @@ function reviewSelectSql(whereClause = '') {
 }
 
 async function getCurrentReviewUser(authUser) {
-  const user = await getUserById(authUser.userId);
+  console.log('JWT user', authUser);
+  const user = await getUserById(authUser.id);
   return user || {
-    id: authUser.userId,
+    id: authUser.id,
     email: authUser.email,
     name: authUser.email?.split('@')[0] || 'Utilisateur'
   };
@@ -529,7 +541,7 @@ app.post('/api/auth/verify-code', async (req, res) => {
             verified = true,
             updated_at = NOW()
           WHERE lower(email) = lower($1)
-          RETURNING id, email, name, created_at, updated_at
+          RETURNING id, email, name, verified, created_at, updated_at
         `
         : `
           INSERT INTO users
@@ -542,7 +554,7 @@ app.post('/api/auth/verify-code', async (req, res) => {
           )
           VALUES
           ($1, $2, true, NOW(), NOW())
-          RETURNING id, email, name, created_at, updated_at
+          RETURNING id, email, name, verified, created_at, updated_at
         `,
       userExists ? [email] : [email, defaultName]
     );
@@ -551,6 +563,7 @@ app.post('/api/auth/verify-code', async (req, res) => {
 
     const token = jwt.sign(
       {
+        id: user.id,
         userId: user.id,
         email: user.email
       },
@@ -579,7 +592,7 @@ app.post('/api/auth/verify-code', async (req, res) => {
 
 app.get('/api/auth/me', requireAuth, async (req, res) => {
   try {
-    const user = await getUserById(req.user.userId);
+    const user = await getUserById(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
@@ -606,15 +619,17 @@ app.put('/api/users/me/name', requireAuth, async (req, res) => {
       UPDATE users
       SET name = $1, updated_at = NOW()
       WHERE id = $2
-      RETURNING id, email, name, created_at, updated_at
+      RETURNING id, email, name, verified, created_at, updated_at
       `,
-      [name, req.user.userId]
+      [name, req.user.id]
     );
 
     const user = cleanUser(result.rows[0]);
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
+
+    console.log('updated user', user);
 
     res.json({ user });
   } catch (err) {
@@ -666,7 +681,7 @@ app.post('/api/spots', requireAuth, upload.single('photo'), async (req, res) => 
       WHERE id = $1
       LIMIT 1
       `,
-      [req.user.userId]
+      [req.user.id]
     );
 
     const connectedUser = userResult.rows[0] || {
@@ -735,7 +750,7 @@ app.post('/api/spots', requireAuth, upload.single('photo'), async (req, res) => 
         description,
         imageUrl,
         imagePublicId,
-        req.user.userId,
+        req.user.id,
         connectedUser.name,
         connectedUser.email
       ]
@@ -780,7 +795,7 @@ app.get('/api/favorites', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
       'SELECT spot_id, created_at FROM favorites WHERE user_id = $1 ORDER BY created_at DESC',
-      [String(req.user.userId)]
+      [String(req.user.id)]
     );
     res.json(result.rows);
   } catch (err) {
@@ -800,7 +815,7 @@ app.post('/api/favorites', requireAuth, async (req, res) => {
       `INSERT INTO favorites (user_id, spot_id)
        VALUES ($1, $2)
        ON CONFLICT (user_id, spot_id) DO NOTHING`,
-      [String(req.user.userId), spotId]
+      [String(req.user.id), spotId]
     );
 
     res.status(201).json({ saved: true, spot_id: spotId });
@@ -819,7 +834,7 @@ app.delete('/api/favorites/:spotId', requireAuth, async (req, res) => {
   try {
     await pool.query(
       'DELETE FROM favorites WHERE user_id = $1 AND spot_id = $2',
-      [String(req.user.userId), req.params.spotId]
+      [String(req.user.id), req.params.spotId]
     );
     res.json({ saved: false, spot_id: req.params.spotId });
   } catch (err) {
@@ -866,8 +881,9 @@ app.post('/api/comments', requireAuth, async (req, res) => {
       `INSERT INTO reviews (spot_id, user_id, user_name, text, rating)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      [spotId, req.user.userId, user.name, text, 5]
+      [spotId, req.user.id, user.name, text, 5]
     );
+    console.log('insert review user_id', req.user?.id);
     const result = await pool.query(reviewSelectSql('WHERE r.id = $1'), [insertResult.rows[0].id]);
 
     res.status(201).json(result.rows[0]);
@@ -912,8 +928,9 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
       ($1,$2,$3,$4,$5)
       RETURNING id
       `,
-      [spot_id, req.user.userId, user.name, text, Math.min(5, Math.max(1, rating))]
+      [spot_id, req.user.id, user.name, text, Math.min(5, Math.max(1, rating))]
     );
+    console.log('insert review user_id', req.user?.id);
     const result = await pool.query(reviewSelectSql('WHERE r.id = $1'), [insertResult.rows[0].id]);
 
     res.status(201).json(result.rows[0]);
