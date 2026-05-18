@@ -6,6 +6,7 @@ let apiReviews = [];
 let spots = [];
 let apiLoadError = null;
 let apiLoading = false;
+const SPOTS_CACHE_KEY = 'finblasti_spots_cache_v1';
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function hasGSAP() {
@@ -199,6 +200,55 @@ function apiErrorState(message) {
   `;
 }
 
+function getFallbackSpots() {
+  return [
+    FinBlasti.normalizeSpot({
+      id: 'le-hub-cafe',
+      name: 'Le Hub Café',
+      city: 'Casablanca',
+      district: 'Maarif',
+      type: 'Café',
+      score: 9.8,
+      eco: 8.5,
+      price: 'Prix étudiant',
+      tags: ['wifi', 'prises', 'student'],
+      badges: ['🚀 Wi-Fi 100Mbps', '🔌 Prises +++', '🎓 -20% Étudiants'],
+      image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=1200',
+      quiet: 8.9,
+      comfort: 9.1,
+      wifi: 9.8,
+      reviews: 124,
+      description: 'Un café moderne, bien placé, avec un Wi-Fi rapide et plusieurs prises.',
+      hours: '08:00 - 22:30',
+      address: 'Maarif, Casablanca',
+      reviewsText: [
+        { user: 'Sara M.', text: 'Très bon Wi-Fi, tables confortables.', rating: 5 },
+        { user: 'Yassine A.', text: 'Bon spot pour travailler le matin.', rating: 5 }
+      ]
+    })
+  ];
+}
+
+function readCachedSpots() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(SPOTS_CACHE_KEY) || '[]');
+    return Array.isArray(cached)
+      ? cached.map((s) => FinBlasti.normalizeSpot({ ...s, id: s.id || s._id }))
+      : [];
+  } catch (err) {
+    console.warn('Cache spots illisible:', err);
+    return [];
+  }
+}
+
+function writeCachedSpots(nextSpots) {
+  try {
+    localStorage.setItem(SPOTS_CACHE_KEY, JSON.stringify(nextSpots));
+  } catch (err) {
+    console.warn('Cache spots non sauvegarde:', err);
+  }
+}
+
 async function chargerReviewsDepuisAPI() {
   try {
     const data = await FinBlasti.apiFetch('/reviews');
@@ -231,49 +281,27 @@ function hideAppLoader() {
 async function chargerSpotsDepuisAPI() {
   try {
     console.log('📡 Chargement des spots depuis l\'API...');
-    const donnees = await FinBlasti.apiFetch('/spots');
+    const donnees = await FinBlasti.apiFetch('/spots', { timeoutMs: 6000 });
     
     if (Array.isArray(donnees) && donnees.length > 0) {
       console.log('✅ ' + donnees.length + ' spots chargés depuis l\'API');
       spots = donnees.map((s) => FinBlasti.normalizeSpot({ ...s, id: s.id || s._id }));
+      writeCachedSpots(spots);
       apiLoadError = null;
     } else {
       console.log('⚠️ Aucun spot trouvé, utilisation des données d\'exemple');
-      // Données d'exemple si la BD est vide
-      spots = [
-        FinBlasti.normalizeSpot({
-          id: 'le-hub-cafe',
-          name: 'Le Hub Café',
-          city: 'Casablanca',
-          district: 'Maarif',
-          type: 'Café',
-          score: 9.8,
-          eco: 8.5,
-          price: 'Prix étudiant',
-          tags: ['wifi', 'prises', 'student'],
-          badges: ['🚀 Wi-Fi 100Mbps', '🔌 Prises +++', '🎓 -20% Étudiants'],
-          image: 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?auto=format&fit=crop&q=80&w=1200',
-          quiet: 8.9,
-          comfort: 9.1,
-          wifi: 9.8,
-          reviews: 124,
-          description: 'Un café moderne, bien placé, avec un Wi-Fi rapide et plusieurs prises.',
-          hours: '08:00 - 22:30',
-          address: 'Maarif, Casablanca',
-          reviewsText: [
-            { user: 'Sara M.', text: 'Très bon Wi-Fi, tables confortables.', rating: 5 },
-            { user: 'Yassine A.', text: 'Bon spot pour travailler le matin.', rating: 5 }
-          ]
-        })
-      ];
+      spots = getFallbackSpots();
       apiLoadError = null;
     }
     
     return spots;
   } catch (error) {
     console.error('❌ Erreur lors du chargement:', error);
-    apiLoadError = error.message || 'Impossible de charger les spots.';
-    spots = [];
+    const cachedSpots = readCachedSpots();
+    spots = cachedSpots.length ? cachedSpots : getFallbackSpots();
+    apiLoadError = cachedSpots.length
+      ? 'Le serveur met trop de temps à répondre. Affichage des spots sauvegardés.'
+      : 'Le serveur met trop de temps à répondre. Affichage des données disponibles hors ligne.';
     return spots;
   }
 }

@@ -46,11 +46,22 @@ cloudinary.config({
 
 // ===== CONFIGURATION BREVO =====
 const BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email';
-const BREVO_TIMEOUT_MS = Number(process.env.BREVO_TIMEOUT_MS || 10000);
+const BREVO_TIMEOUT_MS = 8000;
 const OTP_REQUEST_COOLDOWN_SECONDS = Number(process.env.OTP_REQUEST_COOLDOWN_SECONDS || 60);
 const OTP_MAX_ATTEMPTS = Number(process.env.OTP_MAX_ATTEMPTS || 5);
 const emailFromAddress = process.env.BREVO_SENDER_EMAIL || process.env.MAIL_FROM_EMAIL;
 const emailFromName = process.env.BREVO_SENDER_NAME || process.env.MAIL_FROM_NAME || 'FinBlasti';
+
+try {
+  const brevoStartupConfigError = getBrevoConfigError();
+  if (brevoStartupConfigError) {
+    console.warn('Configuration Brevo invalide au demarrage:', brevoStartupConfigError);
+  } else {
+    console.log('Configuration Brevo chargee.');
+  }
+} catch (err) {
+  console.error('Erreur initialisation Brevo ignoree:', err.message);
+}
 
 // ===== CONFIGURATION UPLOAD PHOTO =====
 const upload = multer({
@@ -256,7 +267,7 @@ app.get('/test', (req, res) => {
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true });
+  res.json({ status: 'ok' });
 });
 
 // ===== ROUTE : DEMANDER UN CODE DE CONNEXION =====
