@@ -101,31 +101,55 @@ function animateDynamicList(container) {
 }
 
 function getConnectedUser() {
-  try {
-    return JSON.parse(localStorage.getItem('finblasti_user'));
-  } catch {
-    return null;
-  }
+  return FinBlasti.getStoredUser();
 }
 
 function updateAuthUI() {
   const user = getConnectedUser();
   const authButton = document.getElementById('authButton');
-
-  if (!authButton) return;
+  const mobileAuthButton = document.getElementById('mobileAuthButton');
 
   if (user && user.name) {
-    authButton.innerHTML = `<i class="fa-solid fa-user-check mr-1"></i> ${user.name}`;
-    authButton.dataset.route = 'profile';
+    if (authButton) {
+      authButton.innerHTML = `<i class="fa-solid fa-user-check mr-1"></i> ${FinBlasti.escapeHtml(user.name)}`;
+      authButton.dataset.route = 'profile';
+    }
+    if (mobileAuthButton) {
+      mobileAuthButton.innerHTML = `<i class="fa-solid fa-user-check mr-2"></i>${FinBlasti.escapeHtml(user.name)}`;
+      mobileAuthButton.dataset.route = 'profile';
+    }
   } else {
-    authButton.innerHTML = 'Connexion';
-    authButton.dataset.route = 'login';
+    if (authButton) {
+      authButton.innerHTML = 'Connexion';
+      authButton.dataset.route = 'login';
+    }
+    if (mobileAuthButton) {
+      mobileAuthButton.innerHTML = 'Connexion';
+      mobileAuthButton.dataset.route = 'login';
+    }
+  }
+}
+
+async function refreshAuthenticatedUser() {
+  if (!FinBlasti.getToken()) return null;
+
+  try {
+    const result = await FinBlasti.apiFetch('/auth/me', {
+      headers: FinBlasti.authHeaders(false)
+    });
+    if (result?.user) {
+      FinBlasti.updateStoredUser(result.user);
+      updateAuthUI();
+    }
+    return result?.user || null;
+  } catch (err) {
+    console.warn('Session utilisateur non synchronisée:', err);
+    return null;
   }
 }
 
 function logoutUser() {
-  localStorage.removeItem('finblasti_token');
-  localStorage.removeItem('finblasti_user');
+  FinBlasti.clearSession();
   updateAuthUI();
   showToast('Déconnexion', 'Tu es maintenant déconnecté.');
   setRoute('home');
@@ -148,24 +172,71 @@ document.getElementById('logoutBtn')?.addEventListener('click', () => {
   logoutUser();
 });
 
-document.getElementById('editNameBtn')?.addEventListener('click', () => {
+function refreshVisibleUserContent() {
+  updateAuthUI();
+  const section = document.getElementById('commentsSection');
+  const spotId = section?.dataset?.spotId;
+  if (spotId) {
+    delete FinBlasti.commentsBySpot[String(spotId)];
+    FinBlasti.bindCommentsSection(spotId);
+  }
+  if (document.getElementById('page-community')?.classList.contains('active')) {
+    chargerReviewsDepuisAPI().then(renderReviews).catch(() => renderReviews());
+  }
+}
+
+function openNameModal() {
   const user = getConnectedUser();
 
   if (!user) return;
 
-  const newName = prompt('Entre ton nouveau nom :', user.name || '');
-
-  if (!newName || !newName.trim()) return;
-
-  user.name = newName.trim();
-
-  localStorage.setItem('finblasti_user', JSON.stringify(user));
-
-  updateAuthUI();
-
+  document.getElementById('profileNameInput').value = user.name || '';
+  document.getElementById('profileNameModal')?.classList.add('open');
   document.getElementById('authMenu')?.classList.add('hidden');
+  setTimeout(() => document.getElementById('profileNameInput')?.focus(), 20);
+}
 
-  showToast('Nom modifié', 'Ton nom a été modifié sur ce navigateur.');
+function closeNameModal() {
+  document.getElementById('profileNameModal')?.classList.remove('open');
+}
+
+document.getElementById('editNameBtn')?.addEventListener('click', openNameModal);
+
+document.getElementById('cancelNameEdit')?.addEventListener('click', closeNameModal);
+
+document.getElementById('profileNameForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const input = document.getElementById('profileNameInput');
+  const newName = input?.value?.trim() || '';
+  const submit = document.getElementById('saveProfileName');
+
+  if (!newName) {
+    showToast('Nom requis', 'Entre le nom à afficher sur FinBlasti.', 'error');
+    return;
+  }
+
+  submit.disabled = true;
+  submit.textContent = 'Enregistrement...';
+
+  try {
+    const result = await FinBlasti.apiFetch('/users/me/name', {
+      method: 'PUT',
+      headers: FinBlasti.authHeaders(),
+      body: JSON.stringify({ name: newName })
+    });
+
+    FinBlasti.updateStoredUser(result.user);
+    Object.keys(FinBlasti.commentsBySpot).forEach((key) => delete FinBlasti.commentsBySpot[key]);
+    closeNameModal();
+    refreshVisibleUserContent();
+    showToast('Nom modifié', 'Ton nouveau nom est affiché partout.');
+  } catch (err) {
+    showToast('Erreur', err.message, 'error');
+  } finally {
+    submit.disabled = false;
+    submit.textContent = 'Enregistrer';
+  }
 });
 
 // Fonction pour charger les spots depuis l'API
@@ -315,6 +386,7 @@ async function refreshAppData({ showLoading = true } = {}) {
     await Promise.allSettled([
       chargerSpotsDepuisAPI(),
       chargerReviewsDepuisAPI(),
+      refreshAuthenticatedUser(),
       FinBlasti.loadFavorites()
     ]);
 
@@ -368,7 +440,7 @@ document.addEventListener('click', (e) => {
     }
 
     function setRoute(route, addToHistory = true) {
-        if (route === 'add' && !localStorage.getItem('finblasti_token')) {
+        if (route === 'add' && !FinBlasti.getToken()) {
     showToast('Connexion requise', 'Tu dois te connecter avant d’ajouter un spot.');
     route = 'login';
   }
@@ -430,6 +502,14 @@ window.addEventListener('scroll', () => {
 
           const authMenu = document.getElementById('authMenu');
           if (authMenu) authMenu.classList.toggle('hidden');
+          return;
+        }
+
+        if (btn.id === 'mobileAuthButton' && getConnectedUser()) {
+          e.preventDefault();
+          e.stopPropagation();
+          openNameModal();
+          mobileMenu.classList.remove('open');
           return;
         }
 
@@ -1008,7 +1088,7 @@ if (
     document.getElementById('addSpotForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const token = localStorage.getItem('finblasti_token');
+      const token = FinBlasti.getToken();
 
       if (!token) {
         showToast('Connexion requise', 'Connecte-toi avant d’ajouter un spot.');
@@ -1045,8 +1125,7 @@ if (
       } catch (error) {
         console.error('Erreur:', error);
         if (String(error.message || '').includes('401') || String(error.message || '').includes('Session')) {
-          localStorage.removeItem('finblasti_token');
-          localStorage.removeItem('finblasti_user');
+          FinBlasti.clearSession();
           showToast('Session expirée', 'Reconnecte-toi pour ajouter un spot.', 'error');
           setRoute('login');
         } else {
@@ -1054,6 +1133,52 @@ if (
         }
       }
     });
+
+    let pendingAuthResult = null;
+    let pendingAuthRoute = 'add';
+
+    function setLoginFlow(flow) {
+      const nameField = document.getElementById('loginNameField');
+      const loginTitle = document.getElementById('loginTitle');
+      const loginHelp = document.getElementById('loginHelp');
+      const flowBadge = document.getElementById('authFlowBadge');
+      const isSignup = flow === 'signup';
+
+      nameField?.classList.toggle('hidden', !isSignup);
+      if (loginTitle) loginTitle.textContent = isSignup ? 'Créer ton compte' : 'Connexion';
+      if (loginHelp) {
+        loginHelp.textContent = isSignup
+          ? 'Cet email n’est pas encore inscrit. Choisis ton nom, puis valide le code reçu.'
+          : 'Email reconnu. Entre le code reçu pour te connecter.';
+      }
+      if (flowBadge) {
+        flowBadge.textContent = isSignup ? 'Nouveau compte' : 'Compte existant';
+        flowBadge.classList.remove('hidden');
+      }
+    }
+
+    function openRememberModal(result, nextRoute = 'add') {
+      pendingAuthResult = result;
+      pendingAuthRoute = nextRoute;
+      document.getElementById('rememberDeviceModal')?.classList.add('open');
+    }
+
+    async function finishAuth(remember) {
+      if (!pendingAuthResult?.token) return;
+
+      FinBlasti.storeSession(pendingAuthResult.token, pendingAuthResult.user, remember);
+      pendingAuthResult = null;
+
+      updateAuthUI();
+      await FinBlasti.loadFavorites();
+
+      document.getElementById('rememberDeviceModal')?.classList.remove('open');
+      showToast('Connexion réussie', remember ? 'Tu resteras connecté sur cet appareil.' : 'Session active pour cet onglet.');
+      setRoute(pendingAuthRoute || 'home');
+    }
+
+    document.getElementById('rememberYesBtn')?.addEventListener('click', () => finishAuth(true));
+    document.getElementById('rememberNoBtn')?.addEventListener('click', () => finishAuth(false));
 
     document.getElementById('sendCodeBtn').addEventListener('click', async () => {
       const email = document.getElementById('loginEmail').value.trim();
@@ -1064,12 +1189,13 @@ if (
       }
 
       try {
-        await FinBlasti.apiFetch('/auth/request-code', {
+        const result = await FinBlasti.apiFetch('/auth/request-code', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email })
         });
 
+        setLoginFlow(result.user_exists ? 'login' : 'signup');
         document.getElementById('codeBox').classList.remove('hidden');
         showToast('Code envoyé', 'Vérifie ton email et entre le code reçu.');
       } catch (error) {
@@ -1081,9 +1207,14 @@ if (
       const name = document.getElementById('loginName').value.trim();
       const email = document.getElementById('loginEmail').value.trim();
       const code = document.getElementById('loginCode').value.trim();
+      const nameFieldVisible = !document.getElementById('loginNameField')?.classList.contains('hidden');
 
       if (!email || !code) {
         showToast('Code requis', 'Entre le code reçu par email.');
+        return;
+      }
+      if (nameFieldVisible && !name) {
+        showToast('Nom requis', 'Entre le nom à afficher sur FinBlasti.', 'error');
         return;
       }
 
@@ -1095,14 +1226,7 @@ if (
         });
 
         if (result?.token) {
-localStorage.setItem('finblasti_token', result.token);
-localStorage.setItem('finblasti_user', JSON.stringify(result.user));
-
-updateAuthUI();
-await FinBlasti.loadFavorites();
-
-showToast('Connexion réussie', 'Tu peux maintenant ajouter des spots avec photo.');
-setRoute('add');
+          openRememberModal(result, 'add');
         }
       } catch (error) {
         showToast('Erreur', error.message, 'error');

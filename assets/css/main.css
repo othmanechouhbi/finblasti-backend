@@ -1,4 +1,5 @@
 ﻿    :root {
+      --font-arabic: "Cairo", sans-serif;
       --surface: rgba(255, 255, 255, 0.88);
       --surface-strong: #ffffff;
       --line: rgba(148, 163, 184, 0.22);
@@ -14,6 +15,13 @@
         linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 46%, #F8FAFC 100%);
       min-height: 100vh;
       overflow-x: hidden;
+    }
+
+    html[lang="ar"],
+    body.lang-ar,
+    [dir="rtl"],
+    .arabic-text {
+      font-family: var(--font-arabic);
     }
 
     .dark body {

@@ -272,6 +272,44 @@ function requireAuth(req, res, next) {
   }
 }
 
+function cleanUser(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name || String(row.email || '').split('@')[0] || 'Utilisateur',
+    created_at: row.created_at || null,
+    updated_at: row.updated_at || null
+  };
+}
+
+async function getUserById(userId) {
+  const result = await pool.query(
+    `
+    SELECT id, email, name, created_at, updated_at
+    FROM users
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [userId]
+  );
+  return cleanUser(result.rows[0]);
+}
+
+function reviewSelectSql(whereClause = '') {
+  return `
+    SELECT
+      r.*,
+      COALESCE(NULLIF(u.name, ''), NULLIF(r.user_name, ''), NULLIF(r.author_name, ''), 'Utilisateur') AS user_name,
+      COALESCE(NULLIF(r.author_name, ''), NULLIF(r.user_name, '')) AS author_name,
+      u.name AS profile_name
+    FROM reviews r
+    LEFT JOIN users u ON CAST(u.id AS TEXT) = CAST(r.user_id AS TEXT)
+    ${whereClause}
+    ORDER BY r.created_at DESC NULLS LAST, r.id DESC
+  `;
+}
+
 // ===== ROUTE TEST =====
 app.get('/test', (req, res) => {
   res.json({
@@ -309,6 +347,18 @@ app.post('/api/auth/request-code', async (req, res) => {
         error: 'Service email non configure. Reessaie plus tard.'
       });
     }
+
+    const userResult = await pool.query(
+      `
+      SELECT id, email, name
+      FROM users
+      WHERE lower(email) = lower($1)
+      LIMIT 1
+      `,
+      [email]
+    );
+    const existingUser = userResult.rows[0] || null;
+    const authFlow = existingUser ? 'login' : 'signup';
 
     const recentRequest = await pool.query(
       `
@@ -354,7 +404,10 @@ app.post('/api/auth/request-code', async (req, res) => {
     console.log(`OTP envoye via Brevo a ${maskEmail(email)} messageId=${brevoResult.messageId || 'n/a'}`);
 
     res.json({
-      message: 'Code envoye par email'
+      message: 'Code envoye par email',
+      flow: authFlow,
+      user_exists: Boolean(existingUser),
+      user: existingUser ? cleanUser(existingUser) : null
     });
 
   } catch (err) {
@@ -444,29 +497,45 @@ app.post('/api/auth/verify-code', async (req, res) => {
       [savedCode.id]
     );
 
-    const userResult = await pool.query(
+    const existingUserResult = await pool.query(
       `
-      INSERT INTO users
-      (
-        email,
-        name,
-        verified
-      )
-      VALUES
-      ($1, $2, true)
-      ON CONFLICT (email)
-      DO UPDATE SET
-        name = EXCLUDED.name,
-        verified = true
-      RETURNING *
+      SELECT id, email, name, created_at, updated_at
+      FROM users
+      WHERE lower(email) = lower($1)
+      LIMIT 1
       `,
-      [
-        email,
-        name || email.split('@')[0]
-      ]
+      [email]
+    );
+    const userExists = existingUserResult.rows.length > 0;
+    const defaultName = name || email.split('@')[0];
+
+    const userResult = await pool.query(
+      userExists
+        ? `
+          UPDATE users
+          SET
+            verified = true,
+            updated_at = NOW()
+          WHERE lower(email) = lower($1)
+          RETURNING id, email, name, created_at, updated_at
+        `
+        : `
+          INSERT INTO users
+          (
+            email,
+            name,
+            verified,
+            created_at,
+            updated_at
+          )
+          VALUES
+          ($1, $2, true, NOW(), NOW())
+          RETURNING id, email, name, created_at, updated_at
+        `,
+      userExists ? [email] : [email, defaultName]
     );
 
-    const user = userResult.rows[0];
+    const user = cleanUser(userResult.rows[0]);
 
     const token = jwt.sign(
       {
@@ -482,7 +551,9 @@ app.post('/api/auth/verify-code', async (req, res) => {
     res.json({
       message: 'Connexion réussie',
       token,
-      user
+      user,
+      flow: userExists ? 'login' : 'signup',
+      user_exists: userExists
     });
 
   } catch (err) {
@@ -491,6 +562,52 @@ app.post('/api/auth/verify-code', async (req, res) => {
     res.status(500).json({
       error: 'Erreur de vérification'
     });
+  }
+});
+
+app.get('/api/auth/me', requireAuth, async (req, res) => {
+  try {
+    const user = await getUserById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+    res.json({ user });
+  } catch (err) {
+    console.error('Erreur auth/me:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.put('/api/users/me/name', requireAuth, async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+
+    if (!name) {
+      return res.status(400).json({ error: 'Nom requis' });
+    }
+    if (name.length > 80) {
+      return res.status(400).json({ error: 'Nom trop long (80 caracteres max)' });
+    }
+
+    const result = await pool.query(
+      `
+      UPDATE users
+      SET name = $1, updated_at = NOW()
+      WHERE id = $2
+      RETURNING id, email, name, created_at, updated_at
+      `,
+      [name, req.user.userId]
+    );
+
+    const user = cleanUser(result.rows[0]);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    res.json({ user });
+  } catch (err) {
+    console.error('Erreur users/me/name:', err);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 
@@ -629,16 +746,11 @@ app.get('/api/reviews', async (req, res) => {
     const spotId = req.query.spot_id;
 
     if (spotId) {
-      const result = await pool.query(
-        'SELECT * FROM reviews WHERE spot_id = $1 ORDER BY created_at DESC NULLS LAST',
-        [spotId]
-      );
+      const result = await pool.query(reviewSelectSql('WHERE r.spot_id = $1'), [spotId]);
       return res.json(result.rows);
     }
 
-    const result = await pool.query(
-      'SELECT * FROM reviews ORDER BY created_at DESC NULLS LAST'
-    );
+    const result = await pool.query(reviewSelectSql());
 
     res.json(result.rows);
 
@@ -712,13 +824,7 @@ app.get('/api/comments', async (req, res) => {
       return res.status(400).json({ error: 'spot_id requis' });
     }
 
-    const result = await pool.query(
-      `SELECT id, spot_id, user_name, text, rating, created_at
-       FROM reviews
-       WHERE spot_id = $1
-       ORDER BY created_at DESC NULLS LAST, id DESC`,
-      [spotId]
-    );
+    const result = await pool.query(reviewSelectSql('WHERE r.spot_id = $1'), [spotId]);
 
     res.json(result.rows);
   } catch (err) {
@@ -752,10 +858,10 @@ app.post('/api/comments', requireAuth, async (req, res) => {
     };
 
     const result = await pool.query(
-      `INSERT INTO reviews (spot_id, user_name, text, rating)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO reviews (spot_id, user_id, user_name, author_name, text, rating)
+       VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING *`,
-      [spotId, user.name, text, 5]
+      [spotId, req.user.userId, user.name, user.name, text, 5]
     );
 
     res.status(201).json(result.rows[0]);
@@ -779,6 +885,9 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
   if (!spot_id || !text) {
     return res.status(400).json({ error: 'spot_id et texte requis' });
   }
+  if (text.length > 500) {
+    return res.status(400).json({ error: 'Commentaire trop long (500 max)' });
+  }
 
   try {
     const userResult = await pool.query(
@@ -795,15 +904,17 @@ app.post('/api/reviews', requireAuth, async (req, res) => {
       INSERT INTO reviews
       (
         spot_id,
+        user_id,
         user_name,
+        author_name,
         text,
         rating
       )
       VALUES
-      ($1,$2,$3,$4)
+      ($1,$2,$3,$4,$5,$6)
       RETURNING *
       `,
-      [spot_id, user.name, text, Math.min(5, Math.max(1, rating))]
+      [spot_id, req.user.userId, user.name, user.name, text, Math.min(5, Math.max(1, rating))]
     );
 
     res.status(201).json(result.rows[0]);
