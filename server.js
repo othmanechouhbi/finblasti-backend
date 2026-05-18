@@ -295,10 +295,42 @@ function cleanUser(row) {
   };
 }
 
+let usersHasUpdatedAtCache = null;
+
+async function usersHasUpdatedAtColumn() {
+  if (usersHasUpdatedAtCache !== null) {
+    return usersHasUpdatedAtCache;
+  }
+
+  try {
+    const result = await pool.query(
+      `
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+      AND table_name = 'users'
+      AND column_name = 'updated_at'
+      LIMIT 1
+      `
+    );
+    usersHasUpdatedAtCache = result.rows.length > 0;
+  } catch (err) {
+    console.warn('Impossible de verifier users.updated_at:', err.message);
+    usersHasUpdatedAtCache = false;
+  }
+
+  return usersHasUpdatedAtCache;
+}
+
+function userReturningColumns(hasUpdatedAt) {
+  return `id, email, name, verified, created_at${hasUpdatedAt ? ', updated_at' : ''}`;
+}
+
 async function getUserById(userId) {
+  const hasUpdatedAt = await usersHasUpdatedAtColumn();
   const result = await pool.query(
     `
-    SELECT id, email, name, verified, created_at, updated_at
+    SELECT ${userReturningColumns(hasUpdatedAt)}
     FROM users
     WHERE id = $1
     LIMIT 1
@@ -533,9 +565,12 @@ app.post('/api/auth/verify-code', async (req, res) => {
       [savedCode.id]
     );
 
+    const hasUpdatedAt = await usersHasUpdatedAtColumn();
+    const returningColumns = userReturningColumns(hasUpdatedAt);
+
     const existingUserResult = await pool.query(
       `
-      SELECT id, email, name, created_at, updated_at
+      SELECT ${returningColumns}
       FROM users
       WHERE lower(email) = lower($1)
       LIMIT 1
@@ -547,15 +582,23 @@ app.post('/api/auth/verify-code', async (req, res) => {
 
     const userResult = await pool.query(
       userExists
-        ? `
+        ? hasUpdatedAt
+          ? `
           UPDATE users
           SET
             verified = true,
             updated_at = NOW()
           WHERE lower(email) = lower($1)
-          RETURNING id, email, name, verified, created_at, updated_at
+          RETURNING ${returningColumns}
         `
-        : `
+          : `
+          UPDATE users
+          SET verified = true
+          WHERE lower(email) = lower($1)
+          RETURNING ${returningColumns}
+        `
+        : hasUpdatedAt
+          ? `
           INSERT INTO users
           (
             email,
@@ -566,7 +609,19 @@ app.post('/api/auth/verify-code', async (req, res) => {
           )
           VALUES
           ($1, $2, true, NOW(), NOW())
-          RETURNING id, email, name, verified, created_at, updated_at
+          RETURNING ${returningColumns}
+        `
+          : `
+          INSERT INTO users
+          (
+            email,
+            name,
+            verified,
+            created_at
+          )
+          VALUES
+          ($1, $2, true, NOW())
+          RETURNING ${returningColumns}
         `,
       userExists ? [email] : [email, defaultName]
     );
@@ -626,13 +681,22 @@ async function updateMyName(req, res) {
       return res.status(400).json({ error: 'Nom trop long (80 caracteres max)' });
     }
 
+    const hasUpdatedAt = await usersHasUpdatedAtColumn();
+    const returningColumns = userReturningColumns(hasUpdatedAt);
     const result = await pool.query(
-      `
-      UPDATE users
-      SET name = $1, updated_at = NOW()
-      WHERE id = $2
-      RETURNING id, email, name, verified, created_at, updated_at
-      `,
+      hasUpdatedAt
+        ? `
+        UPDATE users
+        SET name = $1, updated_at = NOW()
+        WHERE id = $2
+        RETURNING ${returningColumns}
+        `
+        : `
+        UPDATE users
+        SET name = $1
+        WHERE id = $2
+        RETURNING ${returningColumns}
+        `,
       [name, req.user.id]
     );
 
@@ -998,4 +1062,3 @@ app.listen(PORT, () => {
 
   console.log(`- Auth code : http://localhost:${PORT}/api/auth/request-code`);
 });
-
